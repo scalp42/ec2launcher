@@ -115,10 +115,14 @@ module EC2Launcher
       base_device_name = "sdf"
       application.block_devices.each do |block_device|
         if block_device.raid_level.nil?
-          @block_device_mappings["/dev/#{base_device_name}"][:snapshot_id] = get_latest_snapshot(clone_short_hostname, clone_host, block_device.name).id
+          latest_snapshot = get_latest_snapshot_by_purpose(clone_host, block_device.name)
+          abort("Unable to find snapshot for #{clone_host} [#{block_device.name}]") if latest_snapshot.nil?
+          @block_device_mappings["/dev/#{base_device_name}"][:snapshot_id] = latest_snapshot.id
           base_device_name.next!
         else
           snapshots = get_latest_raid_snapshot_mapping(clone_host, block_device.name, block_device.count)
+          abort("Unable to find snapshot for #{clone_host} [#{block_device.name}]") if snapshots.nil? 
+          abort("Incorrect snapshot count for #{clone_host} [#{block_device.name}]. Expected: #{block_device.count}, Found: #{snapshots.length}") if snapshots.length != block_device.count
           build_block_devices(block_device.count, base_device_name) do |device_name, index|
             @block_device_mappings["/dev/#{device_name}"][:snapshot_id] = snapshots[(index + 1).to_s].id
           end
@@ -134,7 +138,7 @@ module EC2Launcher
     # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
     # @param [EC2Launcher::Environment] environment current environment
     # @param [EC2Launcher::Application] application current application
-    # @param [String, nil] clone_host FQDN of host to clone or nill to skip cloning.
+    # @param [String, nil] clone_host FQDN of host to clone or nil to skip cloning.
     #
     def generate_block_devices(hostname, short_hostname, instance_type, environment, application, clone_host = nil)
       build_ephemeral_drives(instance_type)
@@ -236,32 +240,20 @@ module EC2Launcher
       snapshot_mapping
     end
 
-    # Retrieves the most recent snapshot with a specific name AND one or more other filters
+    # Retrieves the most recent snapshot from a specific host that also has
+    # tag called "purpose" with the specified value.
     #
-    # @param [String] server_name name of server with the volume to clone.
-    # @param [String, nil] extra additional AWS compatible filters for searching.
-    #
-    # @return [AWS::EC2::Snapshot, nil] matching snapshot or nil if no matching snapshot
-    #
-    def get_latest_snapshot(server_name, extra = nil)
-      puts "  Retrieving snapshot for #{server_name} #{extra}"
-
-      filter = server_name
-      filter += " (#{server_name} #{extra})" unless extra.nil? || extra.empty?
-      get_latest_snapshot_by_name(filter)
-    end
-
-    # Retrieves the most recent snapshot for a volume with a specific name
-    #
-    # @param [String] name_filter AWS compatible filter for the Name tag on a snapshot
+    # @param [String] clone_host FQDN name of server with the volume to clone.
+    # @param [String] purpose Value of the purpose tag.
     #
     # @return [AWS::EC2::Snapshot, nil] matching snapshot or nil if no matching snapshot
     #
-    def get_latest_snapshot_by_name(name_filter)
-      puts "  Retrieving snapshot with filter tag:Name='#{name_filter}'"
-
+    def get_latest_snapshot_by_purpose(clone_host, purpose)
+      puts "  Retrieving snapshtos for #{clone_host} [#{purpose}]"
+      results = @ec2.snapshots.tagged("host").tagged_values(clone_host).tagged("purpose").tagged_values(purpose)
+      
       snapshot = nil
-      @ec2.snapshots.filter("tag:Name", name_filter).each do |s|
+      results.each do |s|
         next unless s.status == :completed
         snapshot = s if snapshot.nil? || snapshot.start_time < s.start_time
       end

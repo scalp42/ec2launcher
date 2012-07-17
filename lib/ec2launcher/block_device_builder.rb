@@ -47,6 +47,7 @@ module EC2Launcher
     # @param [Array<EC2Launcher::BlockDevice>] block_devices list of block devices to create.
     #
     def build_ebs_volumes(hostname, short_hostname, environment_name, block_devices)
+      return if block_devices.nil?
       base_device_name = "sdf"
       block_devices.each do |block_device|
         build_block_devices(block_device.count, base_device_name) do |device_name, index|

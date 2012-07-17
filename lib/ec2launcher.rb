@@ -100,6 +100,14 @@ module EC2Launcher
         end
       end
 
+      # Process inheritance rules for environments
+      @environments.values.each do |env|
+        next if env.inherit.nil?
+
+        new_env = process_environment_inheritance(env)
+        @environments[new_env.name] = new_env
+      end
+
       # Process inheritance rules for applications
       @applications.values.each do |app|
         next if app.inherit.nil?
@@ -300,7 +308,7 @@ export HOME=/root
 echo '#{setup_json.to_json}' > /tmp/setup.json"
 
       # pre-commands, if necessary
-      unless @environment.precommands.nil? 
+      unless @environment.precommands.nil? || @environment.precommands.empty?
         precommands = @environment.precommands.join("\n")
         user_data += "\n" + precommands
       end
@@ -316,7 +324,7 @@ rm -f /tmp/runurl"
       options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
 
       # Post commands
-      unless @environment.postcommands.nil?
+      unless @environment.postcommands.nil? || @environment.postcommands.empty?
         postcommands = @environment.postcommands.join("\n")
         user_data += "\n" + postcommands
       end
@@ -676,7 +684,7 @@ rm -f /tmp/runurl"
         return nil
       end
 
-      new_env = default_environment.clone unless default_environment.nil?
+      new_env = Marshal::load(Marshal.dump(default_environment)) unless default_environment.nil?
       new_env ||= EC2Launcher::Environment.new
 
       new_env.load(File.read(name))
@@ -729,6 +737,24 @@ rm -f /tmp/runurl"
         end
         new_app.merge(app)
         new_app
+    end
+
+    def process_environment_inheritance(env)
+        return env if env.inherit.nil?
+
+        # Find base environment
+        base_env = @environments[env.inherit]
+        abort("Invalid inheritance '#{env.inherit}' in #{env.name}") if base_env.nil?
+
+        new_env = nil
+        if base_env.inherit.nil?
+          # Clone base environment
+          new_env = Marshal::load(Marshal.dump(base_env))
+        else
+          new_env = process_environment_inheritance(base_env)
+        end
+        new_env.merge(env)
+        new_env
     end
 
     # Validates all settings in an application file

@@ -105,6 +105,14 @@ module EC2Launcher
 			end
 		end
 
+		def inherit(*inherit_type)
+			if inherit_type.empty?
+				@inherit_type
+			else
+				@inherit_type = inherit_type[0]
+			end
+		end
+
 		def key_name(*key)
 			if key.empty?
 				@key_name
@@ -177,6 +185,28 @@ module EC2Launcher
 				self
 			end
 		end
+
+		# Takes values from the other environment and merges them into this one
+		def merge(other_env)
+			@name =other_env.name
+
+			@aliases = other_env.aliases.nil? ? nil : other_env.aliases
+
+			@aws_keyfile = other_env.aws_keyfile unless other_env.aws_keyfile.nil?
+			@availability_zone = other_env.availability_zone unless other_env.availability_zone.nil?
+			@chef_server_url = other_env.chef_server_url unless other_env.chef_server_url.nil?
+			@chef_validation_pem_url = other_env.chef_validation_pem_url unless other_env.chef_validation_pem_url.nil?
+			@domain_name = other_env.domain_name unless other_env.domain_name
+			@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
+			@gems = other_env.gems unless other_env.gems.nil?
+			@key_name = other_env.key_name unless other_env.key_name.nil?
+			@packages = other_env.packages unless other_env.packages.nil?
+			@precommands = other_env.precommands unless other_env.precommands.nil?
+			@postcommands = other_env.postcommands unless other_env.postcommands.nil?
+			@roles = other_env.roles unless other_env.roles.nil?
+			@security_groups = other_env.security_groups unless other_env.security_groups.nil?
+			@subnet = other_env.subnet unless other_env.subnet.nil?
+	end
 
 		def load(dsl)
 			self.instance_eval(dsl)

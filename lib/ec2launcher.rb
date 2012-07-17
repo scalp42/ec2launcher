@@ -306,7 +306,7 @@ export HOME=/root
 echo '#{setup_json.to_json}' > /tmp/setup.json
 curl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
 chmod +x /tmp/runurl
-/tmp/runurl https://s3.amazonaws.com/startup-scripts/setup.rb -e #{options.environ} -a #{options.application} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
+/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{options.environ} -a #{options.application} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
 rm -f /tmp/runurl"
       user_data += " -c #{options.clone_host}" unless options.clone_host.nil?
 

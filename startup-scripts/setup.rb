@@ -8,7 +8,7 @@ require 'ostruct'
 require 'json'
 
 SETUP_SCRIPT = "setup_instance.rb"
-SETUP_SCRIPT_URL = "https://s3.amazonaws.com/startup-scripts/#{SETUP_SCRIPT}"
+SETUP_SCRIPT_URL = "https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts//#{SETUP_SCRIPT}"
 
 class InitOptions
 	def initialize

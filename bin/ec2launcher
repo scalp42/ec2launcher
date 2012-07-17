@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+#
+# Copyright (c) 2012 Sean Laurent
+#
+require 'erb'
+
+require 'ec2launcher'
+require "ec2launcher/init_options"
+
+opt_parser = InitOptions.new
+opt_parser.parse(ARGV)
+
+if opt_parser.command == "init"
+    if File.exists?(opt_parser.location)
+        puts "ERROR! Location '#{opt_parser.location} already exists!"
+        exit 2
+    end
+    Dir.mkdir(opt_parser.location)
+    Dir.chdir(opt_parser.location)
+
+    Dir.mkdir("applications")
+    Dir.mkdir("environments")
+    
+    new_config_template = ERB.new(EC2Launcher::Config::DEFAULT_CONFIG_ERB)
+    File.open("config.rb", 'w') {|f| f.write(new_config_template.result)}
+
+    puts "Successfully created #{opt_parser.location}"
+elsif opt_parser.command == "launch"
+  launcher = EC2Launcher::Launcher.new
+  launcher.launch(opt_parser.options)
+else
+    opt_parser.help
+    exit 1
+end

@@ -292,7 +292,7 @@ module EC2Launcher
         'gems' => gems,
         'packages' => packages
       }
-      unless @application.block_devices.empty?
+      unless @application.block_devices.nil? || @application.block_devices.empty?
         setup_json['block_devices'] = @application.block_devices
       end
       unless email_notifications.nil?
@@ -303,8 +303,16 @@ module EC2Launcher
       # Build launch command
       user_data = "#!/bin/sh
 export HOME=/root
-echo '#{setup_json.to_json}' > /tmp/setup.json
-curl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
+echo '#{setup_json.to_json}' > /tmp/setup.json"
+
+      # pre-commands, if necessary
+      unless @environment.precommands.nil? 
+        precommands = @environment.precommands.join("\n")
+        user_data += "\n" + precommands
+      end
+
+      # Primary setup script
+      user_data += "\ncurl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
 chmod +x /tmp/runurl
 /tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{options.environ} -a #{options.application} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
 rm -f /tmp/runurl"
@@ -312,6 +320,12 @@ rm -f /tmp/runurl"
 
       # Add extra requested commands to the launch sequence
       options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
+
+      # Post commands
+      unless @environment.postcommands.nil?
+        postcommands = @environment.postcommands.join("\n")
+        user_data += "\n" + postcommands
+      end
 
       ##############################
       puts

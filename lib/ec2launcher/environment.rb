@@ -8,12 +8,16 @@ module EC2Launcher
 		include EmailNotifications
 
 		attr_reader :name
+		attr_reader :precommands
+		attr_reader :postcommands
 
 		def initialize()
 			@aliases = []
 			@email_notifications = nil
 			@gems = []
 			@packages = []
+			@precommands = []
+			@postcommands = []
 		end
 
 		def environment(name)
@@ -117,6 +121,14 @@ module EC2Launcher
 				@packages = packages[0]
 				self
 			end
+		end
+
+		def precommand(*command)
+			@precommands << command[0]
+		end
+
+		def postcommand(*command)
+			@postcommands << command[0]
 		end
 
 		def roles(*roles)

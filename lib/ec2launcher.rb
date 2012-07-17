@@ -104,13 +104,7 @@ module EC2Launcher
       @applications.values.each do |app|
         next if app.inherit.nil?
 
-        # Find base application
-        base_app = @applications[app.inherit]
-        abort("Invalid inheritance '#{app.inherit}' in #{app.name}") if base_app.nil?
-
-        # Clone base application
-        new_app = Marshal::load(Marshal.dump(base_app))
-        new_app.merge(app)
+        new_app = process_application_inheritance(app)
         @applications[new_app.name] = new_app
       end
     
@@ -717,6 +711,24 @@ rm -f /tmp/runurl"
       end
 
       valid_directories
+    end
+
+    def process_application_inheritance(app)
+        return app if app.inherit.nil?
+
+        # Find base application
+        base_app = @applications[app.inherit]
+        abort("Invalid inheritance '#{app.inherit}' in #{app.name}") if base_app.nil?
+
+        new_app = nil
+        if base_app.inherit.nil?
+          # Clone base application
+          new_app = Marshal::load(Marshal.dump(base_app))
+        else
+          new_app = process_application_inheritance(base_app)
+        end
+        new_app.merge(app)
+        new_app
     end
 
     # Validates all settings in an application file

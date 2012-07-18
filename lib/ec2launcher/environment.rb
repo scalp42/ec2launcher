@@ -18,6 +18,8 @@ module EC2Launcher
 			@packages = []
 			@precommands = []
 			@postcommands = []
+			@roles = []
+			@security_groups = []
 		end
 
 		def environment(name)

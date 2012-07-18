@@ -173,6 +173,8 @@ module EC2Launcher
       # SECURITY GROUPS
       ##############################
       security_groups = []
+      puts "ENV: #{@environment.security_groups}"
+      puts "APP: #{@application.security_groups_for_environment(@environment.name)}"
       security_groups += @environment.security_groups unless @environment.security_groups.nil?
       security_groups += @application.security_groups_for_environment(@environment.name)
 
@@ -687,7 +689,11 @@ rm -f /tmp/runurl"
       new_env = Marshal::load(Marshal.dump(default_environment)) unless default_environment.nil?
       new_env ||= EC2Launcher::Environment.new
 
-      new_env.load(File.read(name))
+      load_env = EC2Launcher::Environment.new
+      load_env.load(File.read(name))
+
+      new_env.merge(load_env)
+
       new_env
     end
 

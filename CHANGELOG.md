@@ -1,3 +1,7 @@
+## 1.0.7 (18-July-2012)
+
+* Fixed problem with inheriting from default environment.
+
 ## 1.0.6 (18-July-2012)
 
 * Update environment inheritence to merge (instead of replace) gems, packages, roles, commands and security groups.

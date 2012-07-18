@@ -356,8 +356,7 @@ rm -f /tmp/runurl"
       puts
       puts "Availability zone: #{availability_zone}"
       puts "Key name            : #{key_name}"
-      puts "Security groups     : #{security_groups.join(", ")}"
-      puts "Security groups ids : #{security_group_ids.join(", ")}"
+      puts "Security groups     : " + security_groups.collect {|name| "#{name} (#{sg_map[name].security_group_id})"}.join(", ")
       puts "Instance type       : #{instance_type}"
       puts "Architecture        : #{instance_architecture}"
       puts "AMI name            : #{ami.ami_name}"
@@ -413,6 +412,7 @@ rm -f /tmp/runurl"
       puts "Instance id: #{instance.id}"
       puts "Public dns : #{instance.public_dns_name}"
       puts "Private dns: #{instance.private_dns_name}"
+      puts "Private ip : #{instance.private_ip_address}"
       puts "********************"    
     end
 
@@ -631,7 +631,7 @@ rm -f /tmp/runurl"
           :image_id => ami_id,
           :availability_zone => availability_zone,
           :key_name => key_name,
-          :security_group_ids => security_group_id,
+          :security_group_ids => security_group_ids,
           :user_data => user_data,
           :instance_type => instance_type,
           :block_device_mappings => block_device_mappings,

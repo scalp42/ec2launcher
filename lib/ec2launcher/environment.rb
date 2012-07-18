@@ -20,6 +20,7 @@ module EC2Launcher
 			@postcommands = []
 			@roles = []
 			@security_groups = []
+
 		end
 
 		def environment(name)
@@ -209,6 +210,7 @@ module EC2Launcher
 			@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
 			@key_name = other_env.key_name unless other_env.key_name.nil?
 			@subnet = other_env.subnet unless other_env.subnet.nil?
+			@shortname = other_env.short_name unless other_env.short_name.nil?
 	end
 
 		def load(dsl)

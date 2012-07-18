@@ -68,6 +68,7 @@ module EC2Launcher
         end
       end
       @default_environment ||= EC2Launcher::Environment.new
+      @default_environment.inherit(nil)
 
       # Load other environments
       @environments = { }
@@ -102,8 +103,6 @@ module EC2Launcher
 
       # Process inheritance rules for environments
       @environments.values.each do |env|
-        next if env.inherit.nil?
-
         new_env = process_environment_inheritance(env)
         @environments[new_env.name] = new_env
       end
@@ -708,15 +707,9 @@ rm -f /tmp/runurl"
         return nil
       end
 
-      new_env = Marshal::load(Marshal.dump(default_environment)) unless default_environment.nil?
-      new_env ||= EC2Launcher::Environment.new
-
       load_env = EC2Launcher::Environment.new
       load_env.load(File.read(name))
-
-      new_env.merge(load_env)
-
-      new_env
+      load_env
     end
 
     # Attempts to build a list of valid directories.
@@ -768,10 +761,13 @@ rm -f /tmp/runurl"
     end
 
     def process_environment_inheritance(env)
-        return env if env.inherit.nil?
-
         # Find base environment
-        base_env = @environments[env.inherit]
+        base_env = nil
+        if env.inherit.nil?
+          base_env = @default_environment
+        else
+          base_env = @environments[env.inherit]
+        end
         abort("Invalid inheritance '#{env.inherit}' in #{env.name}") if base_env.nil?
 
         new_env = nil

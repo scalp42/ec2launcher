@@ -174,7 +174,7 @@ module EC2Launcher
       ##############################
       security_groups = []
       security_groups += @environment.security_groups unless @environment.security_groups.nil?
-      security_groups += @application.security_groups_for_environment(options.environ)
+      security_groups += @application.security_groups_for_environment(@environment.name)
 
       ##############################
       # INSTANCE TYPE
@@ -316,7 +316,7 @@ echo '#{setup_json.to_json}' > /tmp/setup.json"
       # Primary setup script
       user_data += "\ncurl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
 chmod +x /tmp/runurl
-/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{options.environ} -a #{options.application} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
+/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{@environment.name} -a #{@application.name} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
 rm -f /tmp/runurl"
       user_data += " -c #{options.clone_host}" unless options.clone_host.nil?
 

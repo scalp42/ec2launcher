@@ -2,5 +2,5 @@
 # Copyright (c) 2012 Sean Laurent
 #
 module Ec2launcher
-  VERSION = "1.0.7"
+  VERSION = "1.0.8"
 end

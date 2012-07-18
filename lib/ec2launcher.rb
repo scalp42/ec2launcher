@@ -147,7 +147,20 @@ module EC2Launcher
       # Initialize AWS and create EC2 connection
       initialize_aws()
       @ec2 = AWS::EC2.new
-    
+
+      ##############################
+      # SUBNET
+      ##############################
+      subnet = nil
+      subnet = @application.subnet unless @application.subnet.nil?
+      subnet ||= @environment.subnet unless @environment.subnet.nil?
+
+      ec2_subnet = nil
+      unless subnet.nil?
+        # Find the matching EC2 subnet
+        ec2_subnet = @ec2.subnets[subnet]
+      end
+
       ##############################
       # AVAILABILITY ZONES
       ##############################
@@ -175,6 +188,23 @@ module EC2Launcher
       security_groups = []
       security_groups += @environment.security_groups unless @environment.security_groups.nil?
       security_groups += @application.security_groups_for_environment(@environment.name)
+
+      # Build mapping of existing security group names to security group objects
+      sg_map = { }
+      AWS.start_memoizing
+      @ec2.security_groups.each do |sg|
+        unless ec2_subnet.nil?
+          next unless ec2_subnet.vpc_id == sg.vpc_id
+        end
+        sg_map[sg.name] = sg
+      end
+      AWS.stop_memoizing
+
+      # Convert security group names to security group ids
+      security_group_ids = []
+      security_groups.each do |sg_name|
+        security_group_ids << sg_map[sg_name].security_group_id
+      end
 
       ##############################
       # INSTANCE TYPE
@@ -240,13 +270,6 @@ module EC2Launcher
       roles = []
       roles += @environment.roles unless @environment.roles.nil?
       roles += @application.roles_for_environment(@environment.name)
-
-      ##############################
-      # Packages - preinstall
-      ##############################
-      subnet = nil
-      subnet = @application.subnet unless @application.subnet.nil?
-      subnet ||= @environment.subnet unless @environment.subnet.nil?
 
       ##############################
       # Gems - preinstall
@@ -332,20 +355,21 @@ rm -f /tmp/runurl"
       ##############################
       puts
       puts "Availability zone: #{availability_zone}"
-      puts "Key name         : #{key_name}"
-      puts "Security groups  : #{security_groups.join(", ")}"
-      puts "Instance type    : #{instance_type}"
-      puts "Architecture     : #{instance_architecture}"
-      puts "AMI name         : #{ami.ami_name}"
-      puts "AMI id           : #{ami.ami_id}"
-      puts "Name             : #{hostname}"
-      puts "ELB              : #{elb_name}" if elb_name
-      puts "Chef PEM         : #{chef_validation_pem_url}"
-      puts "AWS key file     : #{aws_keyfile}"
-      puts "Roles            : #{roles.join(', ')}"
-      puts "Gems             : #{gems.join(', ')}"
-      puts "Packages         : #{packages.join(', ')}"
-      puts "VPC Subnet       : #{subnet}" if subnet
+      puts "Key name            : #{key_name}"
+      puts "Security groups     : #{security_groups.join(", ")}"
+      puts "Security groups ids : #{security_group_ids.join(", ")}"
+      puts "Instance type       : #{instance_type}"
+      puts "Architecture        : #{instance_architecture}"
+      puts "AMI name            : #{ami.ami_name}"
+      puts "AMI id              : #{ami.ami_id}"
+      puts "Name                : #{hostname}"
+      puts "ELB                 : #{elb_name}" if elb_name
+      puts "Chef PEM            : #{chef_validation_pem_url}"
+      puts "AWS key file        : #{aws_keyfile}"
+      puts "Roles               : #{roles.join(', ')}"
+      puts "Gems                : #{gems.join(', ')}"
+      puts "Packages            : #{packages.join(', ')}"
+      puts "VPC Subnet          : #{subnet}" if subnet
 
       unless block_device_mappings.empty?
         block_device_mappings.keys.sort.each do |key|
@@ -374,7 +398,7 @@ rm -f /tmp/runurl"
       ##############################
       # Launch the new intance
       ##############################
-      instance = launch_instance(hostname, ami.ami_id, availability_zone, key_name, security_groups, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+      instance = launch_instance(hostname, ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
 
       ##############################
       # ELB
@@ -591,7 +615,7 @@ rm -f /tmp/runurl"
     # @param [String] ami_id id for the AMI to use.
     # @param [String] availability_zone EC2 availability zone to use
     # @param [String] key_name EC2 SSH key to use.
-    # @param [Array<String>] security_groups list of security groups.
+    # @param [Array<String>] security_group_ids list of security groups ids
     # @param [String] instance_type EC2 instance type.
     # @param [String] user_data command data to store pass to the instance in the EC2 user-data field.
     # @param [Hash<String,Hash<String, String>, nil] block_device_mappings mapping of device names to block device details. 
@@ -599,7 +623,7 @@ rm -f /tmp/runurl"
     # @param [Hash<String,Hash<String, String>>, nil] block_device_tags mapping of device names to hash objects with tags for the new EBS block devices.
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
-    def launch_instance(hostname, ami_id, availability_zone, key_name, security_groups, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
+    def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
       puts "Launching instance..."
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
@@ -607,7 +631,7 @@ rm -f /tmp/runurl"
           :image_id => ami_id,
           :availability_zone => availability_zone,
           :key_name => key_name,
-          :security_groups => security_groups,
+          :security_group_ids => security_group_id,
           :user_data => user_data,
           :instance_type => instance_type,
           :block_device_mappings => block_device_mappings,

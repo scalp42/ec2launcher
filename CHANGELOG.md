@@ -1,3 +1,7 @@
+## 1.0.9
+
+* Remove "default" environment.
+
 ## 1.0.8
 
 * Create instance with security group ids, instead of security group names. Fixes problem when launching an instance into a VPC with a security group that exists with the same name in the public cloud and in the vpc.

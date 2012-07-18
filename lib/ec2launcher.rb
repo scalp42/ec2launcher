@@ -57,28 +57,14 @@ module EC2Launcher
       environments_directories = process_directory_list(@config.environments, "environments", "Environments", false)
       applications_directories = process_directory_list(@config.applications, "applications", "Applications", true)
 
-      # Attempt to load default environment data
-      @default_environment = nil
-      environments_directories.each do |env_dir|
-        filename = File.join(env_dir, "default.rb")
-        @default_environment = load_environment_file(filename)
-        unless @default_environment.nil?
-          validate_environment(filename, @default_environment)
-          break
-        end
-      end
-      @default_environment ||= EC2Launcher::Environment.new
-      @default_environment.inherit(nil)
-
       # Load other environments
       @environments = { }
       environments_directories.each do |env_dir|
         Dir.entries(env_dir).each do |env_name|
           filename = File.join(env_dir, env_name)
           next if File.directory?(filename)
-          next if filename == "default.rb"
 
-          new_env = load_environment_file(filename, @default_environment)
+          new_env = load_environment_file(filename)
           validate_environment(filename, new_env)
 
           @environments[new_env.name] = new_env
@@ -167,7 +153,6 @@ module EC2Launcher
       if availability_zone.nil?
         availability_zone = @application.availability_zone
         availability_zone ||= @environment.availability_zone
-        availability_zone ||= @default_environment.availability_zone
         availability_zone ||= "us-east-1a"
       end
 
@@ -175,7 +160,6 @@ module EC2Launcher
       # SSH KEY
       ##############################
       key_name = @environment.key_name
-      key_name ||= @default_environment.key_name
       if key_name.nil?
         puts "Unable to determine SSH key name."
         exit 4
@@ -701,7 +685,7 @@ rm -f /tmp/runurl"
     #
     # @return [EC2Launcher::Environment] the new environment loaded from the specified file.
     #
-    def load_environment_file(name, default_environment = nil, fail_on_missing = false)
+    def load_environment_file(name, fail_on_missing = false)
       unless File.exists?(name)
         abort("Unable to read environment: #{name}") if fail_on_missing
         return nil
@@ -761,13 +745,10 @@ rm -f /tmp/runurl"
     end
 
     def process_environment_inheritance(env)
+        return env if env.inherit.nil?
+
         # Find base environment
-        base_env = nil
-        if env.inherit.nil?
-          base_env = @default_environment
-        else
-          base_env = @environments[env.inherit]
-        end
+        base_env = @environments[env.inherit]
         abort("Invalid inheritance '#{env.inherit}' in #{env.name}") if base_env.nil?
 
         new_env = nil

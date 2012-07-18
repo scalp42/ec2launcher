@@ -3,6 +3,7 @@
 * Create instance with security group ids, instead of security group names. Fixes problem when launching an instance into a VPC with a security group that exists with the same name in the public cloud and in the vpc.
 * Automatically find security group ids from names, given a subnet.
 * Display private ip adress after launching.
+* Overhaul environment inheritance.
 
 ## 1.0.7 
 

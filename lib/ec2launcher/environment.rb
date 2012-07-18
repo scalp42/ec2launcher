@@ -202,15 +202,16 @@ module EC2Launcher
 
 			@aliases = other_env.aliases.nil? ? nil : other_env.aliases
 
+			@ami_name = other_env.ami_name unless other_env.ami_name.nil?
 			@aws_keyfile = other_env.aws_keyfile unless other_env.aws_keyfile.nil?
 			@availability_zone = other_env.availability_zone unless other_env.availability_zone.nil?
 			@chef_server_url = other_env.chef_server_url unless other_env.chef_server_url.nil?
 			@chef_validation_pem_url = other_env.chef_validation_pem_url unless other_env.chef_validation_pem_url.nil?
-			@domain_name = other_env.domain_name unless other_env.domain_name
+			@domain_name = other_env.domain_name unless other_env.domain_name.nil?
 			@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
 			@key_name = other_env.key_name unless other_env.key_name.nil?
 			@subnet = other_env.subnet unless other_env.subnet.nil?
-			@shortname = other_env.short_name unless other_env.short_name.nil?
+			@short_name = other_env.short_name unless other_env.short_name.nil?
 	end
 
 		def load(dsl)

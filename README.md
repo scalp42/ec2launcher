@@ -2,7 +2,7 @@
 
 A tool to help launch Amazon EC2 instances.
 
-See http://studyblue.github.com/ec2launcher/ for more details. Or checkout the [wiki](wiki).
+See http://studyblue.github.com/ec2launcher/ for more details. Or checkout the [wiki](ec2launcher/wiki).
 
 # Contributing
 

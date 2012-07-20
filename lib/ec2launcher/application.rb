@@ -3,6 +3,7 @@
 #
 require 'ec2launcher/block_device'
 require 'ec2launcher/email_notification'
+require 'ec2launcher/security_group_handler'
 
 module EC2Launcher
 	class ApplicationDSL
@@ -28,6 +29,7 @@ module EC2Launcher
 
 	class Application
 		include EC2Launcher::EmailNotifications
+		include EC2Launcher::SecurityGroupHandler
 
 		attr_reader :name
 
@@ -219,22 +221,12 @@ module EC2Launcher
 			roles
 		end
 
-		def security_groups(*groups)
-			if groups.empty?
-				@security_groups
-			else
-				@security_groups = Hash.new if @security_groups.nil?
-				if groups[0].kind_of? Array
-					@security_groups["default"] = groups[0]
-				elsif groups[0].kind_of? Hash
-					groups[0].keys.each {|key| @security_groups[key] = [ groups[0][key] ] }
-				else
-					@security_groups["default"] = [ groups[0].to_s ]
-				end
-				self
-			end
-		end
-
+		# Retrieves the list of Security Group names for the specified environment.
+		#
+		# @return [Array] Returns the list of security groups for the environment. Returns
+		#                 the security groups for the "defaukt" environment if the requested
+		#                 environment is undefined. Returns an empty Array if both the
+		#                 requested environment and "default" environment are undefined.
 		def security_groups_for_environment(environment)
 			groups = @security_groups[environment]
 			groups ||= @security_groups["default"]

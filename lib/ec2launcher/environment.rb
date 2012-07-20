@@ -2,10 +2,12 @@
 # Copyright (c) 2012 Sean Laurent
 #
 require 'ec2launcher/email_notification'
+require 'ec2launcher/security_group_handler'
 
 module EC2Launcher
 	class Environment
 		include EC2Launcher::EmailNotifications
+		include EC2Launcher::SecurityGroupHandler
 
 		attr_reader :name
 		attr_reader :precommands
@@ -152,20 +154,6 @@ module EC2Launcher
 				else
 					@roles = []
 					@roles << roles[0]
-				end
-				self
-			end
-		end
-
-		def security_groups(*security_groups)
-			if security_groups.empty?
-				@security_groups
-			else
-				@security_groups = [] if @security_groups.nil?
-				if security_groups[0].kind_of? Array
-					@security_groups += security_groups[0]
-				else
-					@security_groups << security_groups[0]
 				end
 				self
 			end

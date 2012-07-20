@@ -79,7 +79,7 @@ module EC2Launcher
           filename = File.join(app_dir, application_name)
           next if File.directory?(filename)
 
-          apps = ApplicationDSL.execute(File.read(filename)).applications
+          apps = EC2Launcher::ApplicationDSL.execute(File.read(filename)).applications
           apps.each do |new_application|
             @applications[new_application.name] = new_application
             validate_application(filename, new_application)
@@ -673,7 +673,7 @@ rm -f /tmp/runurl"
       # Load configuration file
       config_filename = File.join(@options.directory, "config.rb")
       abort("Unable to find 'config.rb' in '#{@options.directory}'") unless File.exists?(config_filename)
-      ConfigDSL.execute(File.read(config_filename)).config
+      EC2Launcher::ConfigDSL.execute(File.read(config_filename)).config
     end
 
     # Load and parse an environment file

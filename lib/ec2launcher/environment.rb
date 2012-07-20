@@ -5,7 +5,7 @@ require 'ec2launcher/email_notification'
 
 module EC2Launcher
 	class Environment
-		include EmailNotifications
+		include EC2Launcher::EmailNotifications
 
 		attr_reader :name
 		attr_reader :precommands

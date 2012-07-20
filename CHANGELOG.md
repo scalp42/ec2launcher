@@ -1,3 +1,7 @@
+## 1.0.10
+
+* Support multiple "gem" definitions in applications.
+
 ## 1.0.9
 
 * Remove "default" environment.

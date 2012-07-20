@@ -6,6 +6,7 @@ require 'ec2launcher/email_notification'
 require 'ec2launcher/security_group_handler'
 
 module EC2Launcher
+	# Wrapper class to handle loading Application blocks.
 	class ApplicationDSL
 		attr_accessor :applications
 
@@ -27,6 +28,7 @@ module EC2Launcher
 		end
 	end
 
+	# Represents a single application stack.
 	class Application
 		include EC2Launcher::EmailNotifications
 		include EC2Launcher::SecurityGroupHandler
@@ -44,6 +46,10 @@ module EC2Launcher
 			self
 		end
 
+		# Name of the AMI to use for new instances. Optional.
+		# Can be either a string or a regular expression.
+		#
+		# @param [Array, nil] Either an array of parameters or nil to return the AMI name.
 		def ami_name(*ami_name)
 			if ami_name.empty?
 				@ami_name
@@ -57,6 +63,8 @@ module EC2Launcher
 			end
 		end
 
+		# Name of the availability zone to use for new instances. Optional.
+		# Must be one of EC2Launcher::AVAILABILITY_ZONES.
 		def availability_zone(*zone)
 			if zone.empty?
 				@availability_zone
@@ -66,6 +74,10 @@ module EC2Launcher
 			end
 		end
 
+		# Defines a shorter name when building a host name for new instances. Optional.
+		# By default, new instances are named using the full application name. If you 
+		# specify basename, it will be used instead. Typically, this is used if you 
+		# want a shorter version of the full application name.
 		def basename(*name)
 			if name.empty?
 				@basename
@@ -90,6 +102,11 @@ module EC2Launcher
 			@block_devices << device
 		end
 
+		# Indicates the Amazon Elastic Load Balancer to which new instances should be
+		# attached after launch. Optional.
+		#
+		# The value can be either a String, indicating the name of the ELB, or a Hash
+		# that maps environment names to ELB names.
 		def elb(*elb)
 			if elb.empty?
 				@elb
@@ -104,12 +121,19 @@ module EC2Launcher
 			end
 		end
 
+		# Retrieves the ELB name for a given environment.
 		def elb_for_environment(environment)
 			elb_name = @elb[environment]
 			elb_name ||= @elb["default"]
 			elb_name
 		end
 
+		# Defines an Array of Chef roles that should be applied to new
+		# instances for a specific environment. Can be specified multiple times.
+		#
+		# Expects two parameters:
+		#   * Name of an environment
+		#   * Either the name of a single Chef role or an Array of Chef roles
 		def environment_roles(*data)
 			if data.empty?
 				@environment_roles
@@ -132,15 +156,28 @@ module EC2Launcher
 			end
 		end
 
+		# Gems to install. Optional.
+		#
+		# Expects either a single String naming a gem to install or
+		# an Array of gems.
+		#
+		# Can be specified multiple times.
 		def gems(*gems)
 			if gems.empty?
 				@gems
 			else
-				@gems = gems[0]
+				@gems = [] if @gems.nil?
+				if gems[0].kind_of? Array
+					@gems += gems[0]
+				else
+					@gems << gems[0]
+				end
 				self
 			end
 		end
 
+		# Indicates that this application should inherit all of its settings from another named application.
+		# Optional.
 		def inherit(*inherit_type)
 			if inherit_type.empty?
 				@inherit_type
@@ -149,6 +186,8 @@ module EC2Launcher
 			end
 		end
 
+		# The Amazon EC2 instance type that should be used for new instances.
+		# Must be one of EC2Launcher::INSTANCE_TYPES.
 		def instance_type(*type_name)
 			if type_name.empty?
 				@instance_type

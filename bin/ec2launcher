@@ -7,7 +7,7 @@ require 'erb'
 require 'ec2launcher'
 require "ec2launcher/init_options"
 
-opt_parser = InitOptions.new
+opt_parser = EC2Launcher::InitOptions.new
 opt_parser.parse(ARGV)
 
 if opt_parser.command == "init"

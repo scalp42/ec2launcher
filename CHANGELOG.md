@@ -1,6 +1,7 @@
 ## 1.0.10
 
 * Support multiple "gem" definitions in applications.
+* Fixed moduel reference to InitOptions.
 
 ## 1.0.9
 

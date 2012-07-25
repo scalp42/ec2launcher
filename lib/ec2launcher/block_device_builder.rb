@@ -23,6 +23,23 @@ module EC2Launcher
       @block_device_mappings = {}
       @block_device_tags = {}
     end
+
+    # Generates the mappings for ephemeral and ebs volumes.
+    #
+    # @param [String] hostname FQDN for new host
+    # @param [String] short_hostname short name for host host, without domain name.
+    # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
+    # @param [EC2Launcher::Environment] environment current environment
+    # @param [EC2Launcher::Application] application current application
+    # @param [String, nil] clone_host FQDN of host to clone or nil to skip cloning.
+    #
+    def generate_block_devices(hostname, short_hostname, instance_type, environment, application, clone_host = nil)
+      build_ephemeral_drives(instance_type)
+      build_ebs_volumes(hostname, short_hostname, environment.name, application.block_devices)
+      clone_volumes(environment, application, clone_host)
+    end
+
+    private
   
     # Iterates over a number of block_devices, executing the specified Ruby block.
     #
@@ -129,21 +146,6 @@ module EC2Launcher
         end
       end
       AWS.stop_memoizing
-    end
-
-    # Generates the mappings for ephemeral and ebs volumes.
-    #
-    # @param [String] hostname FQDN for new host
-    # @param [String] short_hostname short name for host host, without domain name.
-    # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
-    # @param [EC2Launcher::Environment] environment current environment
-    # @param [EC2Launcher::Application] application current application
-    # @param [String, nil] clone_host FQDN of host to clone or nil to skip cloning.
-    #
-    def generate_block_devices(hostname, short_hostname, instance_type, environment, application, clone_host = nil)
-      build_ephemeral_drives(instance_type)
-      build_ebs_volumes(hostname, short_hostname, environment.name, application.block_devices)
-      clone_volumes(environment, application, clone_host)
     end
 
     # Retrieves the latest set of completed snapshots for a RAID array of EBS volumes.

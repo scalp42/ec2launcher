@@ -6,15 +6,16 @@ require 'optparse'
 require 'ostruct'
 require 'aws-sdk'
 
-require "ec2launcher/version"
-require "ec2launcher/defaults"
+require 'ec2launcher/version'
+require 'ec2launcher/defaults'
 
-require "ec2launcher/dsl/config"
+require 'ec2launcher/dsl/config'
 require 'ec2launcher/dsl/application'
 require 'ec2launcher/dsl/environment'
 
-require "ec2launcher/backoff_runner"
+require 'ec2launcher/backoff_runner'
 require 'ec2launcher/block_device_builder'
+require 'ec2launcher/hostname_generator'
 
 module EC2Launcher
 
@@ -200,19 +201,29 @@ module EC2Launcher
       ##############################
       # HOSTNAME
       ##############################
-      hostname = @options.hostname
-      if hostname.nil?
-        short_hostname = generate_hostname()
-        hostname = short_hostname
-
-        unless @environment.domain_name.nil?
-          hostname += ".#{@environment.domain_name}"
+      hostname_generator = EC2Launcher::HostnameGenerator.new(@ec2, @environment, @application)
+      short_hostnames = []
+      fqdn_names = []
+      if @options.count > 1
+        1.upto(@options.count).each do |i|
+          short_hostname = hostname_generator.generate_hostname()
+          long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
+          short_hostnames << short_hostname
+          fqdn_names << long_hostname
         end
       else
-        short_hostname = hostname
-        unless @environment.domain_name.nil?
-          short_hostname = hostname.gsub(/.#{@environment.domain_name}/, '')
+        if @options.hostname.nil?
+          short_hostname = hostname_generator.generate_hostname()
+          long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
+        else
+          long_hostname = @options.hostname
+          short_hostname = hostname_generator.generate_short_name(short_hostname, @environment.domain_name)
+          if long_hostname == short_hostname
+            long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
+          end
         end
+        short_hostnames << short_hostname
+        fqdn_names << long_hostname
       end
 
       ##############################
@@ -220,7 +231,6 @@ module EC2Launcher
       ##############################
       block_device_builder = EC2Launcher::BlockDeviceBuilder.new(@ec2, @options.volume_size)
       block_device_mappings = block_device_builder.generate_block_devices(instance_type, @environment, @application, @options.clone_host)
-      block_device_tags = block_device_builder.generate_device_tags(hostname, short_hostname, @environment.name, @application.block_devices)
 
       ##############################
       # ELB
@@ -269,54 +279,6 @@ module EC2Launcher
       aws_keyfile = @environment.aws_keyfile
 
       ##############################
-      # Build JSON for setup scripts
-      ##############################
-      setup_json = {
-        'hostname' => hostname,
-        'short_hostname' => short_hostname,
-        'roles' => roles,
-        'chef_server_url' => @environment.chef_server_url,
-        'chef_validation_pem_url' => chef_validation_pem_url,
-        'aws_keyfile' => aws_keyfile,
-        'gems' => gems,
-        'packages' => packages
-      }
-      unless @application.block_devices.nil? || @application.block_devices.empty?
-        setup_json['block_devices'] = @application.block_devices
-      end
-      unless email_notifications.nil?
-        setup_json['email_notifications'] = email_notifications
-      end
-
-      ##############################
-      # Build launch command
-      user_data = "#!/bin/sh
-export HOME=/root
-echo '#{setup_json.to_json}' > /tmp/setup.json"
-
-      # pre-commands, if necessary
-      unless @environment.precommands.nil? || @environment.precommands.empty?
-        precommands = @environment.precommands.join("\n")
-        user_data += "\n" + precommands
-      end
-
-      # Primary setup script
-      user_data += "\ncurl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
-chmod +x /tmp/runurl
-/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{@environment.name} -a #{@application.name} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
-rm -f /tmp/runurl"
-      user_data += " -c #{options.clone_host}" unless options.clone_host.nil?
-
-      # Add extra requested commands to the launch sequence
-      options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
-
-      # Post commands
-      unless @environment.postcommands.nil? || @environment.postcommands.empty?
-        postcommands = @environment.postcommands.join("\n")
-        user_data += "\n" + postcommands
-      end
-
-      ##############################
       puts
       puts "Availability zone: #{availability_zone}"
       puts "Key name            : #{key_name}"
@@ -325,7 +287,6 @@ rm -f /tmp/runurl"
       puts "Architecture        : #{instance_architecture}"
       puts "AMI name            : #{ami.ami_name}"
       puts "AMI id              : #{ami.ami_id}"
-      puts "Name                : #{hostname}"
       puts "ELB                 : #{elb_name}" if elb_name
       puts "Chef PEM            : #{chef_validation_pem_url}"
       puts "AWS key file        : #{aws_keyfile}"
@@ -333,8 +294,14 @@ rm -f /tmp/runurl"
       puts "Gems                : #{gems.join(', ')}"
       puts "Packages            : #{packages.join(', ')}"
       puts "VPC Subnet          : #{subnet}" if subnet
+      puts ""
+      fqdn_names.each do |fqdn|
+        puts "Name                : #{fqdn}"
+      end
 
       unless block_device_mappings.empty?
+        puts ""
+        puts "Block devices     :"
         block_device_mappings.keys.sort.each do |key|
           if block_device_mappings[key] =~ /^ephemeral/
               puts "  Block device   : #{key}, #{block_device_mappings[key]}"
@@ -345,10 +312,6 @@ rm -f /tmp/runurl"
           end
         end
       end
-
-      puts "User data:"
-      puts user_data
-      puts
 
       if chef_validation_pem_url.nil?
         puts "***ERROR*** Missing the URL For the Chef Validation PEM file."
@@ -361,22 +324,24 @@ rm -f /tmp/runurl"
       ##############################
       # Launch the new intance
       ##############################
-      instance = launch_instance(hostname, ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+      instances = []
+      fqdn_names.each_index do |i|
+        block_device_tags = block_device_builder.generate_device_tags(fqdn[i], short_hostnames[i], @environment.name, @application.block_devices)
+        instances << launch_instance(fqdn[i], ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+
+        puts "Launched #{fqdn[i]} (#{instance.id}) [#{instance.public_dns_name} / #{instance.private_dns_name} / #{instance.private_ip_address} ]"
+      end
 
       ##############################
       # ELB
       ##############################
-      attach_to_elb(instance, elb_name) unless elb_name.nil?
+      unless elb_name.nil?
+        instances.each {|instance| attach_to_elb(instance, elb_name) }
+      end
 
       ##############################
       # COMPLETED
       ##############################
-      puts ""
-      puts "Hostname   : #{hostname}"
-      puts "Instance id: #{instance.id}"
-      puts "Public dns : #{instance.public_dns_name}"
-      puts "Private dns: #{instance.private_dns_name}"
-      puts "Private ip : #{instance.private_ip_address}"
       puts "********************"    
     end
 
@@ -509,68 +474,6 @@ rm -f /tmp/runurl"
         :access_key_id => aws_access_key,
         :secret_access_key => aws_secret_access_key
       })
-    end
-
-    # Generates a new hostname based on:
-    #   * application base name
-    #   * application name
-    #   * application suffix
-    #   * environment short name
-    #   * environment name
-    #
-    def generate_hostname()
-      puts "Calculating host name..."
-
-      prefix = @application.basename
-      prefix ||= @application.name
-
-      env_suffix = @environment.short_name
-      env_suffix ||= @environment.name
-      
-      suffix = env_suffix
-      unless @application.name_suffix.nil?
-        suffix = "#{@application.name_suffix}.#{env_suffix}"
-      end
-
-      regex = Regexp.new("#{prefix}(\\d+)[.]#{suffix.gsub(/[.]/, "[.]")}.*")
-
-      server_numbers = []
-
-      highest_server_number = 0
-      lowest_server_number = 32768
-      AWS.memoize do
-        server_instances = @ec2.instances.filter("tag:Name", "#{prefix}*#{suffix}*")
-        server_instances.each do |i|
-          next if i.status == :terminated
-          server_name = i.tags[:Name]
-          unless regex.match(server_name).nil?
-            server_num = $1.to_i
-            server_numbers << server_num
-          end
-        end
-        highest_server_number = server_numbers.max
-      end
-
-      # If the highest number server is less than 10, just add
-      # 1 to it. Otherwise, find the first available
-      # server number starting at 1.
-      host_number = 0
-      if highest_server_number.nil?
-        host_number = 1
-      elsif highest_server_number < 10
-        host_number = highest_server_number + 1
-      else
-        # Try to start over with 1 and find the
-        # first available host number
-        server_number_set = Set.new(server_numbers)
-        host_number = 1
-        while server_number_set.include?(host_number) do
-            host_number += 1
-        end
-      end
-
-      short_hostname = "#{prefix}#{host_number}.#{suffix}"
-      short_hostname
     end
 
     # Launches an EC2 instance.
@@ -767,6 +670,66 @@ rm -f /tmp/runurl"
       unless environment.availability_zone.nil? || AVAILABILITY_ZONES.include?(environment.availability_zone)
         abort("Invalid availability zone '#{environment.availability_zone}' in environment '#{environment.name}' (#{filename})")
       end
+    end
+
+    # Builds the launch scripts that should run on the new instance.
+    #
+    # @param [String] fqdn Fully qualified hostname
+    # @param [String] short_name Short hostname without the domain
+    # @param [String] chef_validation_pem_url URL For the Chef validation pem file
+    # @param [String] aws_keyfile Name of the AWS key to use
+    # @param [Array<String>] gems List of gems to pre-install
+    # @param [Array<String>] packages List of packages to pre-install
+    # @param [EC2Launcher::DSL::EmailNotifications] email_notifications Email notification settings for launch updates
+    #
+    # @return [String] Launch commands to pass into new instance as userdata
+    def build_launch_command(fqdn, short_hostname, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+      # Build JSON for setup scripts
+      setup_json = {
+        'hostname' => fqdn,
+        'short_hostname' => short_hostname,
+        'roles' => roles,
+        'chef_server_url' => @environment.chef_server_url,
+        'chef_validation_pem_url' => chef_validation_pem_url,
+        'aws_keyfile' => aws_keyfile,
+        'gems' => gems,
+        'packages' => packages
+      }
+      unless @application.block_devices.nil? || @application.block_devices.empty?
+        setup_json['block_devices'] = @application.block_devices
+      end
+      unless email_notifications.nil?
+        setup_json['email_notifications'] = email_notifications
+      end
+
+      ##############################
+      # Build launch command
+      user_data = "#!/bin/sh
+export HOME=/root
+echo '#{setup_json.to_json}' > /tmp/setup.json"
+
+      # pre-commands, if necessary
+      unless @environment.precommands.nil? || @environment.precommands.empty?
+        precommands = @environment.precommands.join("\n")
+        user_data += "\n" + precommands
+      end
+
+      # Primary setup script
+      user_data += "\ncurl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
+chmod +x /tmp/runurl
+/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{@environment.name} -a #{@application.name} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
+rm -f /tmp/runurl"
+      user_data += " -c #{options.clone_host}" unless options.clone_host.nil?
+
+      # Add extra requested commands to the launch sequence
+      options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
+
+      # Post commands
+      unless @environment.postcommands.nil? || @environment.postcommands.empty?
+        postcommands = @environment.postcommands.join("\n")
+        user_data += "\n" + postcommands
+      end
+      user_data
     end
   end
 end

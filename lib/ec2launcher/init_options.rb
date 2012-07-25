@@ -51,26 +51,30 @@ module EC2Launcher
         opts.separator ""
         opts.separator "Additional launch options:"
 
-        opts.on("--command [CMD]", "Additional command to run during launch sequence.") do |command|
+        opts.on("--command [CMD]", String, "Additional command to run during launch sequence.") do |command|
           @options.commands << command
         end
 
-        opts.on("-c", "--clone HOST", "Clone the latest snapshots from a specific host.") do |clone_host|
+        opts.on("--clone HOST", String, "Clone the latest snapshots from a specific host.") do |clone_host|
           @options.clone_host = clone_host
+        end
+
+        opts.on("-c", "--count COUNT", Integer, "Number of new instances to launch.") do |count|
+          @options.count = count
         end
 
         opts.separator ""
         opts.separator "Overrides:"
 
-        opts.on("-d", "--directory DIRECTORY", "Location of configuration directory. Defaults to current directory.") do |directory|
+        opts.on("-d", "--directory DIRECTORY", String, "Location of configuration directory. Defaults to current directory.") do |directory|
           @options.directory = directory
         end
 
-        opts.on("-h", "--hostname NAME", "The name for the new server.") do |hostname|
+        opts.on("-h", "--hostname NAME", String, "The name for the new server.") do |hostname|
           @options.hostname = hostname
         end
 
-        opts.on("-u", "--chef-validation-url", "URL for the Chef validation pem file.") do |chef_validation_url|
+        opts.on("-u", "--chef-validation-url", String, "URL for the Chef validation pem file.") do |chef_validation_url|
           @options.chef_validation_url = chef_validation_url
         end
 
@@ -93,11 +97,11 @@ module EC2Launcher
         opts.separator ""
         opts.separator "AWS Security Options:"
 
-        opts.on("--access-key KEY", "Amazon access key. Overrides AWS_ACCESS_KEY environment variable.") do |access_key|
+        opts.on("--access-key KEY", String, "Amazon access key. Overrides AWS_ACCESS_KEY environment variable.") do |access_key|
           @options.access_key = access_key
         end
 
-        opts.on("--secret SECRET", "Amazon secret access key. Overrides AWS_SECRET_ACCESS_KEY environment variable.") do |secret|
+        opts.on("--secret SECRET", String, "Amazon secret access key. Overrides AWS_SECRET_ACCESS_KEY environment variable.") do |secret|
           @options.secret = secret
         end
 
@@ -130,6 +134,7 @@ module EC2Launcher
       @options.application = nil
       @options.commands = []
       @options.clone_host = nil
+      @options.count = 1
 
       @options.ami_id = nil
       @options.hostname = nil
@@ -154,6 +159,12 @@ module EC2Launcher
           puts "Missing a required parameter: #{@options.environ.nil? ? '--environment' : '--application'}"
           puts
           help
+          exit 1
+        end
+
+        if ! @options.hostname.nil? && @options.count > 1
+          puts "Cannot specify both a hostname ['#{@options.hostname}'] and multiple instances [#{@options.count}]."
+          puts
           exit 1
         end
       end

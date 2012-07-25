@@ -1,3 +1,7 @@
+## 1.0.11
+
+* Support launching multiple instances with one command.
+
 ## 1.0.10
 
 * Support multiple "gem" definitions in applications.

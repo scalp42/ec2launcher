@@ -21,8 +21,7 @@ module EC2Launcher
 			@precommands = []
 			@postcommands = []
 			@roles = []
-			@security_groups = []
-
+			@security_groups = {}
 		end
 
 		def environment(name)
@@ -186,7 +185,12 @@ module EC2Launcher
 			@roles += other_env.roles unless other_env.roles.nil?
 			@precommands += other_env.precommands unless other_env.precommands.nil?
 			@postcommands += other_env.postcommands unless other_env.postcommands.nil?
-			@security_groups += other_env.security_groups unless other_env.security_groups.nil?
+			unless other_env.security_groups.nil?
+				other_env.security_groups.keys.each do |key|
+					@security_groups[key] = [] if @security_groups[key].nil?
+					@security_groups[key] += other_env.security_groups[key]
+				end
+			end
 
 			@aliases = other_env.aliases.nil? ? nil : other_env.aliases
 

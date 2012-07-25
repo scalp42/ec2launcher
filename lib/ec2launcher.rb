@@ -169,7 +169,7 @@ module EC2Launcher
       # SECURITY GROUPS
       ##############################
       security_groups = []
-      security_groups += @environment.security_groups unless @environment.security_groups.nil?
+      security_groups += @environment.security_groups_for_environment(@environment.name) unless @environment.security_groups_for_environment(@environment.name).nil?
       security_groups += @application.security_groups_for_environment(@environment.name)
 
       # Build mapping of existing security group names to security group objects

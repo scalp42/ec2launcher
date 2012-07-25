@@ -27,8 +27,8 @@ module EC2Launcher
 			else
 				@security_groups = Hash.new if @security_groups.nil?
 				if groups[0].kind_of? Array
-					@security_groups["default"] = [] if @security_groups["default"].nil?
-					@security_groups["default"] += groups[0]
+					@security_groups[:default] = [] if @security_groups[:default].nil?
+					@security_groups[:default] += groups[0]
 				elsif groups[0].kind_of? Hash
 					groups[0].keys.each do |env_name|
 						@security_groups[env_name] = [] if @security_groups[env_name].nil?
@@ -39,11 +39,22 @@ module EC2Launcher
 						end
 					end
 				else
-					@security_groups["default"] = [] if @security_groups["default"].nil?
-					@security_groups["default"] << groups[0].to_s
+					@security_groups[:default] = [] if @security_groups[:default].nil?
+					@security_groups[:default] << groups[0].to_s
 				end
 				self
 			end
+		end
+
+		# Retrieves the list of security groups for a given environment. Returns the
+		# default set of security groups if the environment isn't defined. Returns
+		# an empty array if the default security group is empty.
+		def security_groups_for_environment(environment)
+			if @security_groups[environment].nil?
+				# Environment not found - check default
+				return @security_groups[:default].nil? ? [] : @security_groups[:default]
+			end
+			@security_groups[environment]
 		end
 	end
 end

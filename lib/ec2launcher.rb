@@ -218,10 +218,9 @@ module EC2Launcher
       ##############################
       # Block devices
       ##############################
-      builder = EC2Launcher::BlockDeviceBuilder.new(@ec2, @options.volume_size)
-      builder.generate_block_devices(hostname, short_hostname, instance_type, @environment, @application, @options.clone_host)
-      block_device_mappings = builder.block_device_mappings
-      block_device_tags = builder.block_device_tags
+      block_device_builder = EC2Launcher::BlockDeviceBuilder.new(@ec2, @options.volume_size)
+      block_device_mappings = block_device_builder.generate_block_devices(instance_type, @environment, @application, @options.clone_host)
+      block_device_tags = block_device_builder.generate_device_tags(hostname, short_hostname, @environment.name, @application.block_devices)
 
       ##############################
       # ELB

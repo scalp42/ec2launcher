@@ -7,7 +7,6 @@ module EC2Launcher
   # Helper class to build EC2 block device definitions.
   #
   class BlockDeviceBuilder
-    attr_reader :block_device_setup
     attr_reader :block_device_mappings
     attr_reader :block_device_tags
 
@@ -18,25 +17,60 @@ module EC2Launcher
       @ec2 = ec2
       @block_size = volume_size
       @volume_size ||= EC2Launcher::DEFAULT_VOLUME_SIZE
-    
-      @block_device_setup = {}
+
       @block_device_mappings = {}
       @block_device_tags = {}
     end
 
     # Generates the mappings for ephemeral and ebs volumes.
     #
-    # @param [String] hostname FQDN for new host
-    # @param [String] short_hostname short name for host host, without domain name.
     # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
     # @param [EC2Launcher::Environment] environment current environment
     # @param [EC2Launcher::Application] application current application
     # @param [String, nil] clone_host FQDN of host to clone or nil to skip cloning.
     #
-    def generate_block_devices(hostname, short_hostname, instance_type, environment, application, clone_host = nil)
-      build_ephemeral_drives(instance_type)
-      build_ebs_volumes(hostname, short_hostname, environment.name, application.block_devices)
-      clone_volumes(environment, application, clone_host)
+    # @return [Hash<String, Hash] returns a mapping of device names to device details
+    #
+    def generate_block_devices(instance_type, environment, application, clone_host = nil)
+      block_device_mappings = {}
+
+      build_ephemeral_drives(block_device_mappings, instance_type)
+      build_ebs_volumes(block_device_mappings, application.block_devices)
+      clone_volumes(block_device_mappings, application, clone_host)
+
+      block_device_mappings
+    end
+
+    # Generates a mapping of block device names to tags.
+    #
+    # @param [String] hostname FQDN for new host
+    # @param [String] short_hostname short name for host host, without domain name.
+    # @param [String] environment_name Name of current environment
+    # @param [EC2Launcher::DSL::BlockDevice] block devices for this application
+    #
+    # @return [Hash<String, Hash<String, String>] returns a mapping of device names to maps tag names and values.
+    def generate_device_tags(hostname, short_hostname, environment_name, block_devices)
+      block_device_tags = {}
+      unless block_devices.nil?
+        base_device_name = "sdf"
+        block_devices.each do |block_device|
+          build_block_devices(block_device.count, base_device_name) do |device_name, index|
+            block_device_tags["/dev/#{device_name}"] = {
+              "purpose" => block_device.name,
+              "host" => hostname,
+              "environment" => environment_name
+            }
+            
+            if block_device.raid_level.nil?
+              block_device_tags["/dev/#{device_name}"]["Name"] = "#{short_hostname} #{block_device.name}"
+            else
+              block_device_tags["/dev/#{device_name}"]["Name"] = "#{short_hostname} #{block_device.name} raid (#{(index + 1).to_s})"
+              block_device_tags["/dev/#{device_name}"]["raid_number"] = (index + 1).to_s
+            end
+          end
+        end
+      end
+      block_device_tags
     end
 
     private
@@ -58,12 +92,10 @@ module EC2Launcher
 
     # Creates the mappings for the appropriate EBS volumes.
     #
-    # @param [String] hostname FQDN for new host
-    # @param [String] short_hostname short name for host host, without domain name.
-    # @param [String] environment_name name of the environment
+    # @param [Hash<String, Hash>] block_device_mappings Mapping of device names to EBS block device details.
     # @param [Array<EC2Launcher::BlockDevice>] block_devices list of block devices to create.
     #
-    def build_ebs_volumes(hostname, short_hostname, environment_name, block_devices)
+    def build_ebs_volumes(block_device_mappings, block_devices)
       return if block_devices.nil?
       base_device_name = "sdf"
       block_devices.each do |block_device|
@@ -75,28 +107,16 @@ module EC2Launcher
             :volume_size => volume_size,
             :delete_on_termination => true
           }
-
-          block_device_tags["/dev/#{device_name}"] = {
-            "purpose" => block_device.name,
-            "host" => hostname,
-            "environment" => environment_name
-          }
-          
-          if block_device.raid_level.nil?
-            block_device_tags["/dev/#{device_name}"]["Name"] = "#{short_hostname} #{block_device.name}"
-          else
-            block_device_tags["/dev/#{device_name}"]["Name"] = "#{short_hostname} #{block_device.name} raid (#{(index + 1).to_s})"
-            block_device_tags["/dev/#{device_name}"]["raid_number"] = (index + 1).to_s
-          end
         end
       end
     end
 
     # Creates the mappings for the appropriate ephemeral drives.
     #
+    # @param [Hash<String, Hash>] block_devices Map of device names to EC2 block device details.
     # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
     #
-    def build_ephemeral_drives(instance_type)
+    def build_ephemeral_drives(block_devices, instance_type)
       ephemeral_drive_count = case instance_type
         when "m1.small" then 1
         when "m1.medium" then 1
@@ -113,18 +133,18 @@ module EC2Launcher
         else 0
       end
       build_block_devices(ephemeral_drive_count, "sdb") do |device_name, index|
-        @block_device_mappings["/dev/#{device_name}"] = "ephemeral#{index}"
+        block_device_mappings["/dev/#{device_name}"] = "ephemeral#{index}"
       end
     end
 
     # Finds the EBS snapshots to clone for all appropriate block devices and
     # updates the block device mapping hash.
     #
-    # @param [EC2Launcher::Environment] environment current environment
+    # @param [Hash<String, Hash>] block_devices Map of device names to EC2 block device details.
     # @param [EC2Launcher::Application] application current application
     # @param [String] clone_host name of host to clone
     #
-    def clone_volumes(environment, application, clone_host)
+    def clone_volumes(block_device_mappings, application, clone_host = nil)
       return if clone_host.nil?
 
       puts "Retrieving snapshots..."
@@ -134,14 +154,14 @@ module EC2Launcher
         if block_device.raid_level.nil?
           latest_snapshot = get_latest_snapshot_by_purpose(clone_host, block_device.name)
           abort("Unable to find snapshot for #{clone_host} [#{block_device.name}]") if latest_snapshot.nil?
-          @block_device_mappings["/dev/#{base_device_name}"][:snapshot_id] = latest_snapshot.id
+          block_device_mappings["/dev/#{base_device_name}"][:snapshot_id] = latest_snapshot.id
           base_device_name.next!
         else
           snapshots = get_latest_raid_snapshot_mapping(clone_host, block_device.name, block_device.count)
           abort("Unable to find snapshot for #{clone_host} [#{block_device.name}]") if snapshots.nil? 
           abort("Incorrect snapshot count for #{clone_host} [#{block_device.name}]. Expected: #{block_device.count}, Found: #{snapshots.length}") if snapshots.length != block_device.count
           build_block_devices(block_device.count, base_device_name) do |device_name, index|
-            @block_device_mappings["/dev/#{device_name}"][:snapshot_id] = snapshots[(index + 1).to_s].id
+            block_device_mappings["/dev/#{device_name}"][:snapshot_id] = snapshots[(index + 1).to_s].id
           end
         end
       end

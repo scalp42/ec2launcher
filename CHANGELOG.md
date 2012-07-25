@@ -1,7 +1,8 @@
 ## 1.0.10
 
 * Support multiple "gem" definitions in applications.
-* Fixed moduel reference to InitOptions.
+* Fixed module reference to InitOptions.
+* Move run_with_backoff code into separate module for reusability.
 
 ## 1.0.9
 

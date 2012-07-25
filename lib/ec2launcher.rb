@@ -7,12 +7,13 @@ require 'ostruct'
 require 'aws-sdk'
 
 require "ec2launcher/version"
-require "ec2launcher/config"
 require "ec2launcher/defaults"
-require "ec2launcher/backoff_runner"
 
-require 'ec2launcher/application'
-require 'ec2launcher/environment'
+require "ec2launcher/dsl/config"
+require 'ec2launcher/dsl/application'
+require 'ec2launcher/dsl/environment'
+
+require "ec2launcher/backoff_runner"
 require 'ec2launcher/block_device_builder'
 
 module EC2Launcher
@@ -60,7 +61,7 @@ module EC2Launcher
           filename = File.join(app_dir, application_name)
           next if File.directory?(filename)
 
-          apps = EC2Launcher::ApplicationDSL.execute(File.read(filename)).applications
+          apps = EC2Launcher::DSL::ApplicationDSL.execute(File.read(filename)).applications
           apps.each do |new_application|
             @applications[new_application.name] = new_application
             validate_application(filename, new_application)
@@ -654,7 +655,7 @@ rm -f /tmp/runurl"
       # Load configuration file
       config_filename = File.join(@options.directory, "config.rb")
       abort("Unable to find 'config.rb' in '#{@options.directory}'") unless File.exists?(config_filename)
-      EC2Launcher::ConfigDSL.execute(File.read(config_filename)).config
+      EC2Launcher::DSL::ConfigDSL.execute(File.read(config_filename)).config
     end
 
     # Load and parse an environment file
@@ -672,7 +673,7 @@ rm -f /tmp/runurl"
         return nil
       end
 
-      load_env = EC2Launcher::Environment.new
+      load_env = EC2Launcher::DSL::Environment.new
       load_env.load(File.read(name))
       load_env
     end
@@ -746,7 +747,7 @@ rm -f /tmp/runurl"
     # Validates all settings in an application file
     #
     # @param [String] filename name of the application file
-    # @param [EC2Launcher::Application] application application object to validate
+    # @param [EC2Launcher::DSL::Application] application application object to validate
     #
     def validate_application(filename, application)
       unless application.availability_zone.nil? || AVAILABILITY_ZONES.include?(application.availability_zone)
@@ -761,7 +762,7 @@ rm -f /tmp/runurl"
     # Validates all settings in an environment file
     #
     # @param [String] filename name of the environment file
-    # @param [EC2Launcher::Environment] environment environment object to validate
+    # @param [EC2Launcher::DSL::Environment] environment environment object to validate
     #
     def validate_environment(filename, environment)
       unless environment.availability_zone.nil? || AVAILABILITY_ZONES.include?(environment.availability_zone)

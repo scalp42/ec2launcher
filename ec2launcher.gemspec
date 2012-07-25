@@ -12,7 +12,7 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.name          = "ec2launcher"
   gem.require_paths = ["lib"]
-  gem.version       = Ec2launcher::VERSION
+  gem.version       = EC2Launcher::VERSION
 
   gem.add_runtime_dependency "aws-sdk", [">= 1.5.0"]
 end

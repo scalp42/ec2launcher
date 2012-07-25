@@ -1,3 +1,7 @@
+## 1.0.12
+
+* Embed runurl and setup.rb scripts in user-data to avoid having to retrieve them.
+
 ## 1.0.11
 
 * Support launching multiple instances with one command.

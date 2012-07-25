@@ -31,6 +31,11 @@ module EC2Launcher
   class Launcher
     include BackoffRunner
 
+    def initialize()
+      @run_url_script_cache = nil
+      @setup_script_cache = nil
+    end
+
     def launch(options)
       @options = options
       
@@ -324,12 +329,18 @@ module EC2Launcher
       ##############################
       # Launch the new intance
       ##############################
+      puts ""
       instances = []
       fqdn_names.each_index do |i|
-        block_device_tags = block_device_builder.generate_device_tags(fqdn[i], short_hostnames[i], @environment.name, @application.block_devices)
-        instances << launch_instance(fqdn[i], ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+        block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
+        user_data = build_launch_command(fqdn_names[i], short_hostnames[i], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
 
-        puts "Launched #{fqdn[i]} (#{instance.id}) [#{instance.public_dns_name} / #{instance.private_dns_name} / #{instance.private_ip_address} ]"
+        instance = launch_instance(fqdn_names[i], ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+        instances << instance
+
+        public_dns_name = instance.public_dns_name.nil? ? "no public dns" : instance.public_dns_name
+        private_dns_name = instance.private_dns_name.nil? ? "no private dns" : instance.private_dns_name
+        puts "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
       end
 
       ##############################
@@ -491,19 +502,31 @@ module EC2Launcher
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
     def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
-      puts "Launching instance..."
+      puts "Launching instance... #{hostname}"
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
-        new_instance = @ec2.instances.create(
-          :image_id => ami_id,
-          :availability_zone => availability_zone,
-          :key_name => key_name,
-          :security_group_ids => security_group_ids,
-          :user_data => user_data,
-          :instance_type => instance_type,
-          :block_device_mappings => block_device_mappings,
-          :subnet => vpc_subnet
-        )
+        if block_device_mappings.nil? || block_device_mappings.keys.empty?
+          new_instance = @ec2.instances.create(
+            :image_id => ami_id,
+            :availability_zone => availability_zone,
+            :key_name => key_name,
+            :security_group_ids => security_group_ids,
+            :user_data => user_data,
+            :instance_type => instance_type,
+            :subnet => vpc_subnet
+          )
+        else
+          new_instance = @ec2.instances.create(
+            :image_id => ami_id,
+            :availability_zone => availability_zone,
+            :key_name => key_name,
+            :security_group_ids => security_group_ids,
+            :user_data => user_data,
+            :instance_type => instance_type,
+            :block_device_mappings => block_device_mappings,
+            :subnet => vpc_subnet
+          )
+        end
       end
       sleep 5
 
@@ -683,7 +706,7 @@ module EC2Launcher
     # @param [EC2Launcher::DSL::EmailNotifications] email_notifications Email notification settings for launch updates
     #
     # @return [String] Launch commands to pass into new instance as userdata
-    def build_launch_command(fqdn, short_hostname, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+    def build_launch_command(fqdn, short_hostname, roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
       # Build JSON for setup scripts
       setup_json = {
         'hostname' => fqdn,
@@ -704,9 +727,9 @@ module EC2Launcher
 
       ##############################
       # Build launch command
-      user_data = "#!/bin/sh
-export HOME=/root
-echo '#{setup_json.to_json}' > /tmp/setup.json"
+      user_data = "#!/bin/sh"
+      user_data += "\nexport HOME=/root"
+      user_data += "\necho '#{setup_json.to_json}' > /tmp/setup.json"
 
       # pre-commands, if necessary
       unless @environment.precommands.nil? || @environment.precommands.empty?
@@ -714,15 +737,42 @@ echo '#{setup_json.to_json}' > /tmp/setup.json"
         user_data += "\n" + precommands
       end
 
-      # Primary setup script
-      user_data += "\ncurl http://bazaar.launchpad.net/~alestic/runurl/trunk/download/head:/runurl-20090817053347-o2e56z7xwq8m9tt6-1/runurl -o /tmp/runurl
-chmod +x /tmp/runurl
-/tmp/runurl https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts/setup.rb -e #{@environment.name} -a #{@application.name} -h #{hostname} /tmp/setup.json > /var/log/cloud-startup.log
-rm -f /tmp/runurl"
-      user_data += " -c #{options.clone_host}" unless options.clone_host.nil?
+      user_data += "\n"
+
+      if @run_url_script_cache.nil?
+        puts "Downloading runurl script from #{RUN_URL_SCRIPT}"
+        @run_url_script_cache = `curl -s #{RUN_URL_SCRIPT} |gzip -f |base64`
+      end
+
+      if @setup_script_cache.nil?
+        puts "Downloading setup script from #{SETUP_SCRIPT}"
+        @setup_script_cache = `curl -s #{SETUP_SCRIPT} |gzip -f |base64`
+      end
+
+      # runurl script
+      user_data += "cat > /tmp/runurl.gz.base64 <<End-Of-Message\n"
+      user_data += @run_url_script_cache
+      user_data += "End-Of-Message"
+
+      # setup script
+      user_data += "\ncat > /tmp/setup.rb.gz.base64 <<End-Of-Message2\n"
+      user_data += @setup_script_cache
+      user_data += "End-Of-Message2"
+
+      user_data += "\nbase64 -d /tmp/runurl.gz.base64 | gunzip > /tmp/runurl"
+      user_data += "\nchmod +x /tmp/runurl"
+      # user_data += "\nrm -f /tmp/runurl.gz.base64"
+
+      user_data += "\nbase64 -d /tmp/setup.rb.gz.base64 | gunzip > /tmp/setup.rb"
+      user_data += "\nchmod +x /tmp/setup.rb"
+      # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
+
+      user_data += "\n/tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json > /var/log/cloud-startup.log"
+      user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
+      # user_data += "\nrm -f /tmp/runurl /tmp/setup.rb"
 
       # Add extra requested commands to the launch sequence
-      options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
+      @options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
 
       # Post commands
       unless @environment.postcommands.nil? || @environment.postcommands.empty?

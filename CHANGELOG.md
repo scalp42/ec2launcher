@@ -1,3 +1,7 @@
+## 1.0.13
+
+* Fix use of security groups when launching an instance into the public cloud with a security group that is defined with the same name in both the public cloud and a VPC.
+
 ## 1.0.12
 
 * Embed runurl and setup.rb scripts in user-data to avoid having to retrieve them.

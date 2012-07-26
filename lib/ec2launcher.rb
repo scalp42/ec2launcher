@@ -164,7 +164,9 @@ module EC2Launcher
       sg_map = { }
       AWS.start_memoizing
       @ec2.security_groups.each do |sg|
-        unless ec2_subnet.nil?
+        if ec2_subnet.nil?
+          next unless sg.vpc_id.nil?
+        else
           next unless ec2_subnet.vpc_id == sg.vpc_id
         end
         sg_map[sg.name] = sg

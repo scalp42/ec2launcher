@@ -345,6 +345,13 @@ module EC2Launcher
         puts "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
       end
 
+      puts "********************"    
+      fqdn_names.each_index do |i|
+        public_dns_name = instances[i].public_dns_name.nil? ? "no public dns" : instances[i].public_dns_name
+        private_dns_name = instances[i].private_dns_name.nil? ? "no private dns" : instances[i].private_dns_name
+        puts "Launched #{fqdn_names[i]} (#{instances[i].id}) [#{public_dns_name} / #{private_dns_name} / #{instances[i].private_ip_address} ]"
+      end
+
       ##############################
       # ELB
       ##############################

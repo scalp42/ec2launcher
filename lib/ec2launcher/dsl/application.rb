@@ -269,7 +269,7 @@ module EC2Launcher
 			#                 requested environment and "default" environment are undefined.
 			def security_groups_for_environment(environment)
 				groups = @security_groups[environment]
-				groups ||= @security_groups["default"]
+				groups ||= @security_groups[:default]
 				groups ||= []
 				groups
 			end

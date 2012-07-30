@@ -1,3 +1,7 @@
+## 1.0.14
+
+* Added "default" environment for use with security groups.
+
 ## 1.0.13
 
 * Fix use of security groups when launching an instance into the public cloud with a security group that is defined with the same name in both the public cloud and a VPC.

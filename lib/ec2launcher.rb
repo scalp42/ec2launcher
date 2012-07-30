@@ -175,8 +175,15 @@ module EC2Launcher
 
       # Convert security group names to security group ids
       security_group_ids = []
+      missing_security_groups = []
       security_groups.each do |sg_name|
+        missing_security_groups << sg_name unless sg_map.has_key?(sg_name)
         security_group_ids << sg_map[sg_name].security_group_id
+      end
+
+      if missing_security_groups.length > 0
+        puts "ERROR: Missing security groups: #{missing_security_groups.join(', ')}"
+        exit 3
       end
 
       ##############################

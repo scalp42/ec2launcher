@@ -1,3 +1,7 @@
+## 1.0.15
+
+* Fixed problem setting up ephemeral drives.
+
 ## 1.0.14
 
 * Added "default" environment for use with security groups.

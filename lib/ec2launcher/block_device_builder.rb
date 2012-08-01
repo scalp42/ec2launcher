@@ -116,7 +116,7 @@ module EC2Launcher
     # @param [Hash<String, Hash>] block_devices Map of device names to EC2 block device details.
     # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
     #
-    def build_ephemeral_drives(block_devices, instance_type)
+    def build_ephemeral_drives(block_device_mappings, instance_type)
       ephemeral_drive_count = case instance_type
         when "m1.small" then 1
         when "m1.medium" then 1

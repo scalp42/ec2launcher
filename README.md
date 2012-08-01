@@ -10,3 +10,7 @@ All contributions are welcome: ideas, patches, documentation, bug reports, compl
 
 * If you think you found a bug, you probably did. Feel free to create an issue here on GitHub. Also, when filing, please make sure you're familiar with [necolas's guidelines](https://github.com/necolas/issue-guidelines). See https://github.com/StudyBlue/ec2launcher/issues to review existing issues or to create a new issue.
 * If you want to send patches, the best way is to fork this repo and send us a pull request.
+
+# Support
+
+[ec2launcher Google Groups](http://groups.google.com/group/ec2launcher-user)

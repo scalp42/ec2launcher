@@ -801,9 +801,9 @@ module EC2Launcher
       user_data += "\nchmod +x /tmp/setup.rb"
       # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
 
-      user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json > /var/log/cloud-startup.log"
+      user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json"
       user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
-      # user_data += "\nrm -f /tmp/runurl /tmp/setup.rb"
+      user_data += " 2>&1 > /var/log/cloud-startup.log"
 
       # Add extra requested commands to the launch sequence
       @options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }

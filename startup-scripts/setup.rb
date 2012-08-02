@@ -86,7 +86,6 @@ instance_data = JSON.parse(File.read(setup_json_filename))
 gem_path = instance_data["gem_path"]
 ruby_path = instance_data["ruby_path"]
 chef_path = instance_data["chef_path"]
-knife_path = instance_data["knife_path"]
 
 # Pre-install gems
 unless instance_data["gems"].nil?
@@ -95,7 +94,7 @@ end
 
 # Pre-install packages
 unless instance_data["packages"].nil?
-	instance_data["packages"].each {|pkg_name| puts `yum install -y #{pkg_name}` }
+  puts `yum install #{instance_data["packages"].join(" ")} -y`
 end
 
 

@@ -430,6 +430,19 @@ module EC2Launcher
       dirs
     end
 
+    # Builds the path to an executable.
+    def build_path(instance_path, executable, default_path)
+      app_path = default_path
+      unless instance_path.nil?
+        if instance_path =~ /#{executable}$/
+          app_path = instance_path
+        else
+          app_path = File.join(instance_path, executable)
+        end
+      end
+      app_path
+    end
+
     # Searches for the most recent AMI matching the criteria.
     #
     # @param [String] arch system archicture, `i386` or `x86_64`
@@ -734,10 +747,10 @@ module EC2Launcher
         'gems' => gems,
         'packages' => packages
       }
-      setup_json["gem_path"] = @environment["gem_path"] unless @environment["gem_path"].nil?
-      setup_json["ruby_path"] = @environment["ruby_path"] unless @environment["ruby_path"].nil?
-      setup_json["chef_path"] = @environment["chef_path"] unless @environment["chef_path"].nil?
-      setup_json["knife_path"] = @environment["knife_path"] unless @environment["knife_path"].nil?
+      setup_json["gem_path"] = build_path(@environment.gem_path, "gem", "/usr/bin/gem")
+      setup_json["ruby_path"] = build_path(@environment.ruby_path, "ruby", "/usr/bin/ruby")
+      setup_json["chef_path"] = build_path(@environment.chef_path, "chef-client", "/usr/bin/chef-client")
+      setup_json["knife_path"] = build_path(@environment.knife_path, "knife", "/usr/bin/knife")
 
       unless @application.block_devices.nil? || @application.block_devices.empty?
         setup_json['block_devices'] = @application.block_devices
@@ -788,7 +801,7 @@ module EC2Launcher
       user_data += "\nchmod +x /tmp/setup.rb"
       # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
 
-      user_data += "\n/tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json > /var/log/cloud-startup.log"
+      user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json > /var/log/cloud-startup.log"
       user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
       # user_data += "\nrm -f /tmp/runurl /tmp/setup.rb"
 

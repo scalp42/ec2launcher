@@ -74,19 +74,6 @@ def run_command(cmd)
   end
 end
 
-# Builds the path to an executable.
-def build_path(instance_path, executable, default_path)
-  app_path = default_path
-  unless instance_path.nil?
-    if instance_path =~ /#{executable}$/
-      app_path = instance_path
-    else
-      app_path = File.join(instance_path, executable)
-    end
-  end
-  app_path
-end
-
 option_parser = InitOptions.new
 options = option_parser.parse(ARGV)
 
@@ -96,10 +83,10 @@ setup_json_filename = ARGV[0]
 instance_data = JSON.parse(File.read(setup_json_filename))
 
 # Path to executables
-gem_path = build_path(instance_data["gem_path"], "gem", "/usr/bin/gem")
-ruby_path = build_path(instance_data["ruby_path"], "ruby", "/usr/bin/ruby")
-chef_path = build_path(instance_data["chef_path"], "chef-client", "/usr/bin/chef-client")
-knife_path = build_path(instance_data["knife_path"], "knife", "/usr/bin/knife")
+gem_path = instance_data["gem_path"]
+ruby_path = instance_data["ruby_path"]
+chef_path = instance_data["chef_path"]
+knife_path = instance_data["knife_path"]
 
 # Pre-install gems
 unless instance_data["gems"].nil?

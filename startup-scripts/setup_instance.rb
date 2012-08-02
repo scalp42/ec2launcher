@@ -183,7 +183,7 @@ end
 ##############################
 # Assembles a set of existing partitions into a RAID array.
 def assemble_raid_array(partition_list, raid_device = '/dev/md0', raid_type = 0)
-  mylog.info "Assembling cloned RAID-#{raid_type.to_s} array #{raid_device} ..."
+  puts "Assembling cloned RAID-#{raid_type.to_s} array #{raid_device} ..."
   command = "/sbin/mdadm --assemble #{raid_device} #{partition_list.join(' ')}"
   puts command
   puts `#{command}`

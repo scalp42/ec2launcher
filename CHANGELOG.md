@@ -1,3 +1,7 @@
+## 1.0.18
+
+* Additional command subsitution variables for ruby, gem, chef-client and knife executables.
+
 ## 1.0.17
 
 * Added support to substitute the application name and environment name in pre/post commands.

@@ -14,6 +14,7 @@ require 'ec2launcher/dsl/application'
 require 'ec2launcher/dsl/environment'
 
 require 'ec2launcher/backoff_runner'
+require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
 require 'ec2launcher/hostname_generator'
 
@@ -117,7 +118,14 @@ module EC2Launcher
       end
       @application = @applications[options.application]
 
+      ##############################
+      # INSTANCE PATHS
+      ##############################
+      @instance_paths = EC2Launcher::InstancePathsConfig.new(@environment)
+
+      ##############################
       # Initialize AWS and create EC2 connection
+      ##############################
       initialize_aws()
       @ec2 = AWS::EC2.new
 
@@ -701,11 +709,28 @@ module EC2Launcher
     # Given a string containing a command to run, replaces any inline variables.
     # Supported variables include:
     #   * @APPLICATION@ - name of the application
+    #   * @APP@ - name of the application
     #   * @ENVIRONMENT@ - name of the environment
+    #   * @ENV@ - name of the environment
+    #   * @RUBY@ - Full pathname to the ruby executable
+    #   * @GEM@ - Full pathname to the gem executable
+    #   * @CHEF@ - Full pathname to the chef-client executable
+    #   * @KNIFE@ - Full pathname to the knife executable
     #
     # @return [String] command with variables replaced
     def substitute_command_variables(cmd)
-      cmd.gsub(/@APPLICATION@/, @application.name).gsub(/@ENVIRONMENT@/, @environment.name)
+      substitutions = {
+        /@APPLICATION@/ => @application.name,
+        /@APP@/ => @application.name,
+        /@ENVIRONMENT@/ => @environment.name,
+        /@ENV@/ => @environment.name,
+        /@RUBY@/ => @instance_paths.ruby_path,
+        /@GEM@/ => @instance_paths.gem_path,
+        /@CHEF@/ => @instance_paths.chef_path,
+        /@KNIFE@/ => @instance_paths.knife_path
+      }
+      substitutions.keys.each {|key| cmd.gsub!(key, substitutions[key]) }
+      cmd
     end
 
     # Validates all settings in an application file
@@ -757,10 +782,10 @@ module EC2Launcher
         'gems' => gems,
         'packages' => packages
       }
-      setup_json["gem_path"] = build_path(@environment.gem_path, "gem", "/usr/bin/gem")
-      setup_json["ruby_path"] = build_path(@environment.ruby_path, "ruby", "/usr/bin/ruby")
-      setup_json["chef_path"] = build_path(@environment.chef_path, "chef-client", "/usr/bin/chef-client")
-      setup_json["knife_path"] = build_path(@environment.knife_path, "knife", "/usr/bin/knife")
+      setup_json["gem_path"] = @instance_paths.gem_path
+      setup_json["ruby_path"] = @instance_paths.ruby_path
+      setup_json["chef_path"] = @instance_paths.chef_path
+      setup_json["knife_path"] = @instance_paths.knife_path
 
       unless @application.block_devices.nil? || @application.block_devices.empty?
         setup_json['block_devices'] = @application.block_devices

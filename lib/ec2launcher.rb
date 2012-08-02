@@ -734,6 +734,11 @@ module EC2Launcher
         'gems' => gems,
         'packages' => packages
       }
+      setup_json["gem_path"] = @config["gem_path"] unless @config["gem_path"].nil?
+      setup_json["ruby_path"] = @config["ruby_path"] unless @config["ruby_path"].nil?
+      setup_json["chef_path"] = @config["chef_path"] unless @config["chef_path"].nil?
+      setup_json["knife_path"] = @config["knife_path"] unless @config["knife_path"].nil?
+
       unless @application.block_devices.nil? || @application.block_devices.empty?
         setup_json['block_devices'] = @application.block_devices
       end

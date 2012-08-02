@@ -67,6 +67,20 @@ class InitOptions
 end
 
 ##############################
+# Builds the path to an executable.
+def build_path(instance_path, executable, default_path)
+  app_path = default_path
+  unless instance_path.nil?
+    if instance_path =~ /#{executable}$/
+      app_path = instance_path
+    else
+      app_path = File.join(instance_path, executable)
+    end
+  end
+  app_path
+end
+
+##############################
 # Wrapper that retries failed calls to AWS
 # with an exponential back-off rate.
 def retry_aws_with_backoff(&block)
@@ -283,6 +297,10 @@ end
 # CHEF SETUP
 ##############################
 
+# Path to executables
+chef_path = build_path(instance_data["chef_path"], "chef-client", "/usr/bin/chef-client")
+knife_path = build_path(instance_data["knife_path"], "knife", "/usr/bin/knife")
+
 ##############################
 # Create knife configuration
 knife_config = <<EOF
@@ -306,14 +324,14 @@ end
 ##############################
 # Add roles
 instance_data["roles"].each do |role|
-  cmd = "knife node run_list add #{options.hostname} \"role[#{role}]\""
+  cmd = "#{{knife_path} node run_list add #{options.hostname} \"role[#{role}]\""
   puts cmd
   puts `#{cmd}`
 end
 
 ##############################
 # Launch Chef
-IO.popen("chef-client") do |f|
+IO.popen(chef_path) do |f|
   while ! f.eof
     puts f.gets
   end

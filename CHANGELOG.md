@@ -1,3 +1,7 @@
+## 1.0.16
+
+* Added support for custom paths to ruby, gem, chef-client and knife executables.
+
 ## 1.0.15
 
 * Fixed problem setting up ephemeral drives.

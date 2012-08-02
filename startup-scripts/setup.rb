@@ -74,6 +74,19 @@ def run_command(cmd)
   end
 end
 
+# Builds the path to an executable.
+def build_path(instance_path, executable, default_path)
+  app_path = default_path
+  unless instance_path.nil?
+    if instance_path =~ /#{executable}$/
+      app_path = instance_path
+    else
+      app_path = File.join(instance_path, executable)
+    end
+  end
+  app_path
+end
+
 option_parser = InitOptions.new
 options = option_parser.parse(ARGV)
 
@@ -82,9 +95,15 @@ setup_json_filename = ARGV[0]
 # Read the setup JSON file
 instance_data = JSON.parse(File.read(setup_json_filename))
 
+# Path to executables
+gem_path = build_path(instance_data["gem_path"], "gem", "/usr/bin/gem")
+ruby_path = build_path(instance_data["ruby_path"], "ruby", "/usr/bin/ruby")
+chef_path = build_path(instance_data["chef_path"], "chef-client", "/usr/bin/chef-client")
+knife_path = build_path(instance_data["knife_path"], "knife", "/usr/bin/knife")
+
 # Pre-install gems
 unless instance_data["gems"].nil?
-	instance_data["gems"].each {|gem_name| puts `/usr/bin/gem install --no-rdoc --no-ri #{gem_name}` }
+	instance_data["gems"].each {|gem_name| puts `#{gem_path} install --no-rdoc --no-ri #{gem_name}` }
 end
 
 # Pre-install packages
@@ -143,12 +162,12 @@ File.open("/etc/chef/client.rb", 'a') { |f| f.write("node_name \"#{options.hostn
 # Setup Chef client
 puts "Connecting to Chef ..."
 `rm -f /etc/chef/client.pem`
-puts `chef-client`
+puts `#{chef_path}`
 
 # Retrieve secondary setup script and run it
 puts "Getting role setup script ..."
 puts `s3curl.pl --id startup #{SETUP_SCRIPT_URL} > /tmp/#{SETUP_SCRIPT} && chmod +x /tmp/#{SETUP_SCRIPT}`
-command = "/tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{options.hostname} #{setup_json_filename}"
+command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{options.hostname} #{setup_json_filename}"
 command += " -c #{options.clone_host}" unless options.clone_host.nil?
-command += " > /var/log/cloud-init.log"
+command += " 2>&1 > /var/log/cloud-init.log"
 run_command(command)

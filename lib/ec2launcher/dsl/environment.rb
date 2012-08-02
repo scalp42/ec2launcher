@@ -110,6 +110,38 @@ module EC2Launcher
 				end
 			end
 
+      def gem_path(*gem_path)
+        if gem_path.empty?
+          @gem_path
+        else
+          @gem_path = gem_path[0]
+        end
+      end
+
+      def ruby_path(*ruby_path)
+        if ruby_path.empty?
+          @ruby_path
+        else
+          @ruby_path = ruby_path[0]
+        end
+      end
+
+      def chef_path(*chef_path)
+        if chef_path.empty?
+          @chef_path
+        else
+          @chef_path = chef_path[0]
+        end
+      end
+
+      def knife_path(*knife_path)
+        if knife_path.empty?
+          @knife_path
+        else
+          @knife_path = knife_path[0]
+        end
+      end
+
 			def inherit(*inherit_type)
 				if inherit_type.empty?
 					@inherit_type
@@ -198,11 +230,15 @@ module EC2Launcher
 				@ami_name = other_env.ami_name unless other_env.ami_name.nil?
 				@aws_keyfile = other_env.aws_keyfile unless other_env.aws_keyfile.nil?
 				@availability_zone = other_env.availability_zone unless other_env.availability_zone.nil?
+				@chef_path = other_env.chef_path unless other_env.chef_path.nil?
 				@chef_server_url = other_env.chef_server_url unless other_env.chef_server_url.nil?
 				@chef_validation_pem_url = other_env.chef_validation_pem_url unless other_env.chef_validation_pem_url.nil?
 				@domain_name = other_env.domain_name unless other_env.domain_name.nil?
 				@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
+				@gem_path = other_env.gem_path unless other_env.gem_path.nil?
 				@key_name = other_env.key_name unless other_env.key_name.nil?
+				@knife_path = other_env.knife_path unless other_env.knife_path.nil?
+				@ruby_path = other_env.ruby_path unless other_env.ruby_path.nil?
 				@subnet = other_env.subnet unless other_env.subnet.nil?
 				@short_name = other_env.short_name unless other_env.short_name.nil?
 		end

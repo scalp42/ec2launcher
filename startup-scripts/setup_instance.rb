@@ -310,7 +310,7 @@ end
 ##############################
 # Add roles
 instance_data["roles"].each do |role|
-  cmd = "#{{knife_path} node run_list add #{options.hostname} \"role[#{role}]\""
+  cmd = "#{knife_path} node run_list add #{options.hostname} \"role[#{role}]\""
   puts cmd
   puts `#{cmd}`
 end

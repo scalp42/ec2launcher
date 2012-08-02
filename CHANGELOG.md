@@ -1,3 +1,7 @@
+## 1.0.17
+
+* Added support to substitute the application name and environment name in pre/post commands.
+
 ## 1.0.16
 
 * Added support for custom paths to ruby, gem, chef-client and knife executables.

@@ -698,6 +698,16 @@ module EC2Launcher
         new_env
     end
 
+    # Given a string containing a command to run, replaces any inline variables.
+    # Supported variables include:
+    #   * @APPLICATION@ - name of the application
+    #   * @ENVIRONMENT@ - name of the environment
+    #
+    # @return [String] command with variables replaced
+    def substitute_command_variables(cmd)
+      cmd.gsub(/@APPLICATION@/, @application.name).gsub(/@ENVIRONMENT@/, @environment.name)
+    end
+
     # Validates all settings in an application file
     #
     # @param [String] filename name of the application file
@@ -767,8 +777,8 @@ module EC2Launcher
 
       # pre-commands, if necessary
       unless @environment.precommands.nil? || @environment.precommands.empty?
-        precommands = @environment.precommands.join("\n")
-        user_data += "\n" + precommands
+        commands = @environment.precommands.collect {|cmd| substitute_command_variables(cmd) }
+        user_data += "\n" + commands.join("\n")
       end
 
       user_data += "\n"
@@ -806,12 +816,16 @@ module EC2Launcher
       user_data += " 2>&1 > /var/log/cloud-startup.log"
 
       # Add extra requested commands to the launch sequence
+      unless @options.commands.nil?
+        commands = @environment.commands.collect {|cmd| substitute_command_variables(cmd) }
+        user_data += "\n" + commands.join("\n")
+      end
       @options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
 
       # Post commands
       unless @environment.postcommands.nil? || @environment.postcommands.empty?
-        postcommands = @environment.postcommands.join("\n")
-        user_data += "\n" + postcommands
+        commands = @environment.postcommands.collect {|cmd| substitute_command_variables(cmd) }
+        user_data += "\n" + commands.join("\n")
       end
       user_data
     end

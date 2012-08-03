@@ -842,7 +842,7 @@ module EC2Launcher
 
       # Add extra requested commands to the launch sequence
       unless @options.commands.nil?
-        commands = @environment.commands.collect {|cmd| substitute_command_variables(cmd) }
+        commands = @options.commands.collect {|cmd| substitute_command_variables(cmd) }
         user_data += "\n" + commands.join("\n")
       end
       @options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }

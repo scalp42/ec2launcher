@@ -1,3 +1,7 @@
+## 1.0.19
+
+* Fixed typo in launch command.
+
 ## 1.0.18
 
 * Additional command subsitution variables for ruby, gem, chef-client and knife executables.

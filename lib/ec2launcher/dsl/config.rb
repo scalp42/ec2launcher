@@ -78,38 +78,6 @@ end
           @config_manager = config_manager[0]
         end
       end
-
-      def gem_path(*gem_path)
-        if gem_path.empty?
-          @gem_path
-        else
-          @gem_path = gem_path[0]
-        end
-      end
-
-      def ruby_path(*ruby_path)
-        if ruby_path.empty?
-          @ruby_path
-        else
-          @ruby_path = ruby_path[0]
-        end
-      end
-
-      def chef_path(*chef_path)
-        if chef_path.empty?
-          @chef_path
-        else
-          @chef_path = chef_path[0]
-        end
-      end
-
-      def knife_path(*knife_path)
-        if knife_path.empty?
-          @knife_path
-        else
-          @knife_path = knife_path[0]
-        end
-      end
     end
   end
 end

@@ -2,5 +2,5 @@
 # Copyright (c) 2012 Sean Laurent
 #
 module EC2Launcher
-  VERSION = "1.0.17"
+  VERSION = "1.0.18"
 end

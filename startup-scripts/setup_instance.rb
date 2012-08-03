@@ -213,7 +213,10 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
     #   $ /sbin/mdadm --detail --scan
     #   mdadm: cannot open /dev/md/0_0: No such file or directory
     #   mdadm: cannot open /dev/md/1_0: No such file or directory
-    raid_info = `ll /dev/md/0_0 |grep -v "md-device-map" |awk '// { print $9; }' |sort`.split("\n")[-1]
+    #
+    # This is tied to how the raid array was created named. See https://bugzilla.redhat.com/show_bug.cgi?id=606481
+    # for a lengthy discussion. As a stop-gap, try to use the specified raid_device name passed into this method.
+    raid_info = raid_device
   else
     raid_info = raid_scan_info.split("\n")[-1].split()
   end
@@ -278,6 +281,7 @@ unless instance_data["block_devices"].nil?
   end
   puts `yum install mdadm -y` if raid_required
 
+  raid_array_count = 0
 	next_device_name = "xvdj"
 	instance_data["block_devices"].each do |block_device_json|
 		if block_device_json["raid_level"].nil?
@@ -294,8 +298,9 @@ unless instance_data["block_devices"].nil?
 				raid_devices << "/dev/#{device_name}"
 				next_device_name = device_name
 			end
-			raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md0", block_device_json["raid_level"].to_i, ! options.clone_host.nil?)
+			raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device_json["raid_level"].to_i, ! options.clone_host.nil?)
 			mount_device(raid_device_name, block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
+      raid_array_count += 1
 		end
 	end
 end

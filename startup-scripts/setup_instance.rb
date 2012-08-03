@@ -206,7 +206,8 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
   # RAID device name can be a symlink on occasion, so we
   # want to de-reference the symlink to keep everything clear.
   raid_info = "/dev/md0"
-  raid_scan_info = `/sbin/mdadm --detail --scan`
+  raid_scan_info = `/sbin/mdadm --detail --scan 2>&1`
+  puts "RAID Scan Info: #{raid_scan_info}"
   if raid_scan_info =~ /cannot open/
     # This happens occasionally on CentOS 6:
     #   $ /sbin/mdadm --detail --scan

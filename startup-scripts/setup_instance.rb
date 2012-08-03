@@ -205,7 +205,17 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
 
   # RAID device name can be a symlink on occasion, so we
   # want to de-reference the symlink to keep everything clear.
-	raid_info = `/sbin/mdadm --detail --scan`.split("\n")[-1].split()
+  raid_info = "/dev/md0"
+  raid_scan_info = `/sbin/mdadm --detail --scan`
+  if raid_scan_info =~ /cannot open/
+    # This happens occasionally on CentOS 6:
+    #   $ /sbin/mdadm --detail --scan
+    #   mdadm: cannot open /dev/md/0_0: No such file or directory
+    #   mdadm: cannot open /dev/md/1_0: No such file or directory
+    raid_info = `ll /dev/md/0_0 |grep -v "md-device-map" |awk '// { print $9; }' |sort`.split("\n")[-1]
+  else
+    raid_info = raid_scan_info.split("\n")[-1].split()
+  end
 	Pathname.new(raid_info[1]).realpath.to_s
 end
 

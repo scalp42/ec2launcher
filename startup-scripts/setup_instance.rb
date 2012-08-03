@@ -214,9 +214,9 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
     #   mdadm: cannot open /dev/md/0_0: No such file or directory
     #   mdadm: cannot open /dev/md/1_0: No such file or directory
     #
-    # This is tied to how the raid array was created named. See https://bugzilla.redhat.com/show_bug.cgi?id=606481
-    # for a lengthy discussion. We should really be naming RAID arrays correctly and using the HOMEHOST setting
-    # to re-assemble it.
+    # This is tied to how the raid array was created, especially if the array was created with an older version of mdadm. 
+    # See https://bugzilla.redhat.com/show_bug.cgi?id=606481 for a lengthy discussion. We should really be naming RAID 
+    # arrays correctly and using the HOMEHOST setting to re-assemble it.
     #
     # As a stop-gap, try to use the specified raid_device name passed into this method.
     raid_info = raid_device
@@ -293,7 +293,7 @@ unless instance_data["block_devices"].nil?
 				partition_devices([ "/dev/#{next_device_name}" ])
 				format_filesystem(system_arch, "/dev/#{next_device_name}1")
 			end
-			mount_device("#{next_device_name}1", block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
+			mount_device("/dev/#{next_device_name}1", block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
 			next_device_name.next!
 		else
 			raid_devices = []

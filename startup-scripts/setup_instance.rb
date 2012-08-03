@@ -257,6 +257,16 @@ end
 
 # Process EBS volumes
 unless instance_data["block_devices"].nil?
+  # Install mdadm if we have any RAID devices
+  raid_required = false
+  instance_data["block_devices"].each do |block_device_json|
+    unless block_device_json["raid_level"].nil?
+      raid_required = true
+      break
+    end
+  end
+  puts `yum install mdadm -y` if raid_required
+
 	next_device_name = "xvdj"
 	instance_data["block_devices"].each do |block_device_json|
 		if block_device_json["raid_level"].nil?

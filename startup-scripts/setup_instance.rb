@@ -220,6 +220,12 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
     #
     # As a stop-gap, try to use the specified raid_device name passed into this method.
     raid_info = raid_device
+
+    # We need to manually retrieve the UUID of the array
+    array_uuid = `mdadm --detail #{raid_device}|grep UUID|awk '// { print $3; }'`.strip
+
+    # We have to manually update mdadm.conf as well
+    `echo ARRAY #{raid_device} level=raid#{raid_type.to_s} num-devices=#{devices.count.to_s} meta-data=0.90 UUID=#{array_uuid} |tee -a /etc/mdadm.conf`
   else
     raid_info = raid_scan_info.split("\n")[-1].split()[1]
   end

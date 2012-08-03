@@ -215,12 +215,15 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
     #   mdadm: cannot open /dev/md/1_0: No such file or directory
     #
     # This is tied to how the raid array was created named. See https://bugzilla.redhat.com/show_bug.cgi?id=606481
-    # for a lengthy discussion. As a stop-gap, try to use the specified raid_device name passed into this method.
+    # for a lengthy discussion. We should really be naming RAID arrays correctly and using the HOMEHOST setting
+    # to re-assemble it.
+    #
+    # As a stop-gap, try to use the specified raid_device name passed into this method.
     raid_info = raid_device
   else
-    raid_info = raid_scan_info.split("\n")[-1].split()
+    raid_info = raid_scan_info.split("\n")[-1].split()[1]
   end
-	Pathname.new(raid_info[1]).realpath.to_s
+	Pathname.new(raid_info).realpath.to_s
 end
 
 def build_block_devices(count, device = "xvdj", &block)

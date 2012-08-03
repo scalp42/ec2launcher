@@ -341,7 +341,16 @@ module EC2Launcher
       end
 
       # Quit if we're only displaying the defaults
-      exit 0 if @options.show_defaults
+      if @options.show_defaults || @options.show_user_data
+        if @options.show_user_data
+          user_data = build_launch_command(fqdn_names[0], short_hostnames[0], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+          puts ""
+          puts "---user-data---"
+          puts user_data
+          puts "---user-data---"
+        end
+        exit 0
+      end
 
       ##############################
       # Launch the new intance

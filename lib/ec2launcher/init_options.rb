@@ -33,8 +33,12 @@ module EC2Launcher
           @options.list = true
         end
 
-        opts.on("-s", "--show-defaults", "Show settings, but do not launch any instances.") do
+        opts.on("-s", "--show-defaults", "Show settings, but do not launch any instances. Does not display user-data.") do
           @options.show_defaults = true
+        end
+
+        opts.on("--show-user-data", "Show user-data, but do not launch any instances.") do
+          @options.show_user_data = true
         end
 
         opts.separator ""
@@ -129,6 +133,7 @@ module EC2Launcher
       @options = OpenStruct.new
       @options.list = false
       @options.show_defaults = false
+      @options.show_user_data = false
 
       @options.environ = nil
       @options.application = nil

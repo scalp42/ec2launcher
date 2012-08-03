@@ -1,3 +1,7 @@
+## 1.0.20
+
+* New command line option to show user-data.
+
 ## 1.0.19
 
 * Fixed typo in launch command.

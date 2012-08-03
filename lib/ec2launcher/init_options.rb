@@ -67,6 +67,10 @@ module EC2Launcher
           @options.count = count
         end
 
+        opts.on("--skip-setup", "Skip running the setup scripts. Still runs pre/post commands.") do
+          @options.skip_setup = true
+        end
+
         opts.separator ""
         opts.separator "Overrides:"
 
@@ -140,6 +144,7 @@ module EC2Launcher
       @options.commands = []
       @options.clone_host = nil
       @options.count = 1
+      @options.skip_setup = false
 
       @options.ami_id = nil
       @options.hostname = nil

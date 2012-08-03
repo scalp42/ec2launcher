@@ -817,37 +817,39 @@ module EC2Launcher
 
       user_data += "\n"
 
-      if @run_url_script_cache.nil?
-        puts "Downloading runurl script from #{RUN_URL_SCRIPT}"
-        @run_url_script_cache = `curl -s #{RUN_URL_SCRIPT} |gzip -f |base64`
+      unless @options.skip_setup
+        if @run_url_script_cache.nil?
+          puts "Downloading runurl script from #{RUN_URL_SCRIPT}"
+          @run_url_script_cache = `curl -s #{RUN_URL_SCRIPT} |gzip -f |base64`
+        end
+
+        if @setup_script_cache.nil?
+          puts "Downloading setup script from #{SETUP_SCRIPT}"
+          @setup_script_cache = `curl -s #{SETUP_SCRIPT} |gzip -f |base64`
+        end
+
+        # runurl script
+        user_data += "cat > /tmp/runurl.gz.base64 <<End-Of-Message\n"
+        user_data += @run_url_script_cache
+        user_data += "End-Of-Message"
+
+        # setup script
+        user_data += "\ncat > /tmp/setup.rb.gz.base64 <<End-Of-Message2\n"
+        user_data += @setup_script_cache
+        user_data += "End-Of-Message2"
+
+        user_data += "\nbase64 -d /tmp/runurl.gz.base64 | gunzip > /tmp/runurl"
+        user_data += "\nchmod +x /tmp/runurl"
+        # user_data += "\nrm -f /tmp/runurl.gz.base64"
+
+        user_data += "\nbase64 -d /tmp/setup.rb.gz.base64 | gunzip > /tmp/setup.rb"
+        user_data += "\nchmod +x /tmp/setup.rb"
+        # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
+
+        user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json"
+        user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
+        user_data += " 2>&1 > /var/log/cloud-startup.log"
       end
-
-      if @setup_script_cache.nil?
-        puts "Downloading setup script from #{SETUP_SCRIPT}"
-        @setup_script_cache = `curl -s #{SETUP_SCRIPT} |gzip -f |base64`
-      end
-
-      # runurl script
-      user_data += "cat > /tmp/runurl.gz.base64 <<End-Of-Message\n"
-      user_data += @run_url_script_cache
-      user_data += "End-Of-Message"
-
-      # setup script
-      user_data += "\ncat > /tmp/setup.rb.gz.base64 <<End-Of-Message2\n"
-      user_data += @setup_script_cache
-      user_data += "End-Of-Message2"
-
-      user_data += "\nbase64 -d /tmp/runurl.gz.base64 | gunzip > /tmp/runurl"
-      user_data += "\nchmod +x /tmp/runurl"
-      # user_data += "\nrm -f /tmp/runurl.gz.base64"
-
-      user_data += "\nbase64 -d /tmp/setup.rb.gz.base64 | gunzip > /tmp/setup.rb"
-      user_data += "\nchmod +x /tmp/setup.rb"
-      # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
-
-      user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json"
-      user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
-      user_data += " 2>&1 > /var/log/cloud-startup.log"
 
       # Add extra requested commands to the launch sequence
       unless @options.commands.nil?

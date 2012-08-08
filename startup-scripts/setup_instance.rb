@@ -272,7 +272,7 @@ build_block_devices(ephemeral_drive_count, "xvdf") do |device_name, index|
 	format_filesystem(system_arch, "/dev/#{device_name}1")
 
 	mount_point = case index
-		when 1 then "/mnt"
+		when 0 then "/mnt"
 		else "/mnt/extra#{index - 1}"
 	end
 	mount_device("/dev/#{device_name}1", mount_point, "root", "root", default_fs_type)

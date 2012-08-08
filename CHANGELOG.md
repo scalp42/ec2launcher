@@ -1,3 +1,7 @@
+## 1.0.21
+
+* Fixed bugs with merging applications together under certain circumstances.
+
 ## 1.0.20
 
 * New command line option to show user-data.

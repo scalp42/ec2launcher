@@ -204,11 +204,25 @@ module EC2Launcher
 				@ami_name = other_server.ami_name unless other_server.ami_name.nil?
 				@availability_zone = other_server.availability_zone unless other_server.availability_zone.nil?
 				@basename = other_server.basename unless other_server.basename.nil?
-				other_server.block_devices.each {|bd| @block_devices << bd } unless other_server.block_devices.nil?
-				other_server.elb.keys.each {|env_name| @elb[env_name] = other_server.elb[env_name] } unless other_server.elb.nil?
+				
+				unless other_server.block_devices.nil?
+					@block_devices = []
+					other_server.block_devices.each {|bd| @block_devices << bd }
+				end
+				
+				unless other_server.elb.nil?
+					@elb = {}
+					other_server.elb.keys.each {|env_name| @elb[env_name] = other_server.elb[env_name] } 
+				end
+				
 				@instance_type = other_server.instance_type unless other_server.instance_type.nil?
 				@name_suffix = other_server.name_suffix unless other_server.name_suffix.nil?
-				other_server.roles.each {|role| @roles << role } unless other_server.roles.nil?
+				
+				unless other_server.roles.nil?
+					@roles = []
+					other_server.roles.each {|role| @roles << role } 
+				end
+
 				unless other_server.security_groups.nil?
 					other_server.security_groups.keys.each do |env_name|
 						unless @security_groups.has_key? env_name

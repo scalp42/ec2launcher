@@ -1,3 +1,7 @@
+## 1.0.22
+
+* Fixed additional bug with merging applications.
+
 ## 1.0.21
 
 * Fixed bugs with merging applications together under certain circumstances.

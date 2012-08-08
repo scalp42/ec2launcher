@@ -4,6 +4,7 @@
 * New command line option to skip the setup scripts.
 * Changes to handling RAID array assembly from cloned EBS volumes. Specifically arrays created with mdadm < 3.1.2 that don't use version 1.2 superblocks.
 * Fixed typo with cloning/mounting single volumes.
+* Cleaned up launch output.
 
 ## 1.0.19
 

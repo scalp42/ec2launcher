@@ -371,9 +371,9 @@ module EC2Launcher
 
       puts "********************"    
       fqdn_names.each_index do |i|
-        public_dns_name = instances[i].public_dns_name.nil? ? "no public dns" : instances[i].public_dns_name
-        private_dns_name = instances[i].private_dns_name.nil? ? "no private dns" : instances[i].private_dns_name
-        puts "Launched #{fqdn_names[i]} (#{instances[i].id}) [#{public_dns_name} / #{private_dns_name} / #{instances[i].private_ip_address} ]"
+        public_dns_name = instances[i].public_dns_name.nil? ? "n/a" : instances[i].public_dns_name
+        private_dns_name = instances[i].private_dns_name.nil? ? "n/a" : instances[i].private_dns_name
+        puts "** New instance: #{fqdn_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
       end
 
       ##############################

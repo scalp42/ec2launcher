@@ -361,9 +361,9 @@ end
 ##############################
 # EMAIL NOTIFICATION
 ##############################
-
-unless instance_data["email_notification"].nil?
+if instance_data["email_notification"]
   # Email notification through SES
+  puts "Email notification through SES..."
   AWS.config({
     :access_key_id => instance_data["email_notification"]["ses_access_key"],
     :secret_access_key => instance_data["email_notification"]["ses_secret_key"]
@@ -376,4 +376,6 @@ unless instance_data["email_notification"].nil?
     :body_text => "Server setup is complete for Host: #{hostname}, Environment: #{options.environ}, Application: #{options.application}",
     :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{hostname}</div><div><strong>Environment:</strong> #{options.environ}</div><div><strong>Application:</strong> #{options.application}</div>"
   )
+else
+  puts "Skipping email notification."
 end

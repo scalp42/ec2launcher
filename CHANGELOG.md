@@ -1,3 +1,7 @@
+## 1.0.25
+
+* Fixed duplicate commands.
+
 ## 1.0.24
 
 * Fixed typos.

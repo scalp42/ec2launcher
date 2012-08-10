@@ -873,7 +873,6 @@ module EC2Launcher
         commands = @options.commands.collect {|cmd| substitute_command_variables(cmd) }
         user_data += "\n" + commands.join("\n")
       end
-      @options.commands.each {|extra_cmd| user_data += "\n#{extra_cmd}" }
 
       # Post commands
       unless @environment.postcommands.nil? || @environment.postcommands.empty?

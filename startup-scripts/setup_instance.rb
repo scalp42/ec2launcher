@@ -352,11 +352,19 @@ end
 
 ##############################
 # Launch Chef
-IO.popen(chef_path) do |f|
-  while ! f.eof
-    puts f.gets
+def run_chef_client(chef_path)
+  result = 0
+  Open3.popen3(command) do |stdin, stdout, stderr, wait_thr|
+    stdout.each do |line|
+      puts line
+    end
+    result = wait_thr.value
   end
+  result
 end
+
+result = run_chef_client(chef_path)
+run_chef_client(chef_path) unless result == 0
 
 ##############################
 # EMAIL NOTIFICATION

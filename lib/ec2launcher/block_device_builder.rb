@@ -2,6 +2,9 @@
 # Copyright (c) 2012 Sean Laurent
 #
 require 'ec2launcher/defaults'
+require 'log4r'
+
+include Log4r
 
 module EC2Launcher
   # Helper class to build EC2 block device definitions.
@@ -20,6 +23,8 @@ module EC2Launcher
 
       @block_device_mappings = {}
       @block_device_tags = {}
+
+      @log = Logger['ec2launcher']
     end
 
     # Generates the mappings for ephemeral and ebs volumes.
@@ -147,7 +152,7 @@ module EC2Launcher
     def clone_volumes(block_device_mappings, application, clone_host = nil)
       return if clone_host.nil?
 
-      puts "Retrieving snapshots..."
+      @log.info "Retrieving snapshots..."
       AWS.start_memoizing
       base_device_name = "sdf"
       application.block_devices.each do |block_device|
@@ -183,10 +188,10 @@ module EC2Launcher
     # @return [Hash<Integer, AWS::EC2::Snapshot>] mapping of RAID device numbers (zero based) to AWS Snapshots.
     #
     def get_latest_raid_snapshot_mapping(hostname, purpose, count)
-      puts "Retrieving list of snapshots ..."
+      @log.info "Retrieving list of snapshots ..."
       result = @ec2.snapshots.tagged("host").tagged_values(hostname).tagged("volumeName").tagged_values("*raid*").tagged("time")
 
-      puts "Building list of snapshots to clone (#{purpose}) for '#{hostname}'..."
+      @log.info "Building list of snapshots to clone (#{purpose}) for '#{hostname}'..."
       snapshot_name_regex = /#{purpose} raid.*/
       host_snapshots = []
       result.each do |s|
@@ -242,7 +247,7 @@ module EC2Launcher
       end
       most_recent_dates.sort!
 
-      puts "Most recent snapshot: #{most_recent_dates[0]}"
+      @log.info "Most recent snapshot: #{most_recent_dates[0]}"
 
       snapshot_mapping = { }
       AWS.memoize do
@@ -271,7 +276,7 @@ module EC2Launcher
     # @return [AWS::EC2::Snapshot, nil] matching snapshot or nil if no matching snapshot
     #
     def get_latest_snapshot_by_purpose(clone_host, purpose)
-      puts "  Retrieving snapshtos for #{clone_host} [#{purpose}]"
+      @log.info "Retrieving snapshtos for #{clone_host} [#{purpose}]"
       results = @ec2.snapshots.tagged("host").tagged_values(clone_host).tagged("purpose").tagged_values(purpose)
       
       snapshot = nil

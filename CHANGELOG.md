@@ -1,3 +1,8 @@
+## 1.0.24
+
+* Fixed typos.
+* Hide additional logging.
+
 ## 1.0.23
 
 * Display subnet CIDR block when launching instances into VPCs.

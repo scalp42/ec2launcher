@@ -39,7 +39,7 @@ module EC2Launcher
       @run_url_script_cache = nil
       @setup_script_cache = nil
 
-      @log = Logger.new 'mylog'
+      @log = Logger.new 'ec2launcher'
       log_output = Outputter.stdout
       log_output.formatter = PatternFormatter.new :pattern => "%m"
       @log.outputters = log_output
@@ -330,7 +330,7 @@ module EC2Launcher
       @log.info "Gems                : #{gems.join(', ')}"
       @log.info "Packages            : #{packages.join(', ')}"
       if subnet
-        cidr_block = ec2.subnets[subnet].cidr_block
+        cidr_block = @ec2.subnets[subnet].cidr_block
         @log.info "VPC Subnet          : #{subnet} (#{cidr_block})"
       end
       @log.info ""
@@ -383,10 +383,10 @@ module EC2Launcher
 
         public_dns_name = instance.public_dns_name.nil? ? "no public dns" : instance.public_dns_name
         private_dns_name = instance.private_dns_name.nil? ? "no private dns" : instance.private_dns_name
-        @log.warn "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
+        @log.info "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
       end
 
-      @log.warn "********************"    
+      @log.info "********************"    
       fqdn_names.each_index do |i|
         public_dns_name = instances[i].public_dns_name.nil? ? "n/a" : instances[i].public_dns_name
         private_dns_name = instances[i].private_dns_name.nil? ? "n/a" : instances[i].private_dns_name
@@ -403,7 +403,7 @@ module EC2Launcher
       ##############################
       # COMPLETED
       ##############################
-      @log.warn "********************"    
+      @log.info "********************"    
     end
 
     # Attaches an instance to the specified ELB.

@@ -5,6 +5,7 @@ require 'rubygems'
 require 'optparse'
 require 'ostruct'
 require 'aws-sdk'
+require 'log4r'
 
 require 'ec2launcher/version'
 require 'ec2launcher/defaults'
@@ -17,6 +18,8 @@ require 'ec2launcher/backoff_runner'
 require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
 require 'ec2launcher/hostname_generator'
+
+include Log4r
 
 module EC2Launcher
 
@@ -35,10 +38,21 @@ module EC2Launcher
     def initialize()
       @run_url_script_cache = nil
       @setup_script_cache = nil
+
+      @log = Logger.new 'mylog'
+      log_output = Outputter.stdout
+      log_output.formatter = PatternFormatter.new :pattern => "%m"
+      @log.outputters = log_output
     end
 
     def launch(options)
       @options = options
+
+      @log.level = case @options.verbosity 
+        when :quiet then WARN
+        when :verbose then DEBUG
+        else INFO
+      end
       
       # Load configuration data
       @config = load_config_file
@@ -104,7 +118,7 @@ module EC2Launcher
       # ENVIRONMENT
       ##############################
       unless @environments.has_key? options.environ
-        puts "Environment not found: #{options.environ}"
+        @log.fatal "Environment not found: #{options.environ}"
         exit 2
       end
       @environment = @environments[options.environ]
@@ -113,7 +127,7 @@ module EC2Launcher
       # APPLICATION
       ##############################
       unless @applications.has_key? options.application
-        puts "Application not found: #{options.application}"
+        @log.fatal "Application not found: #{options.application}"
         exit 3
       end
       @application = @applications[options.application]
@@ -157,7 +171,7 @@ module EC2Launcher
       ##############################
       key_name = @environment.key_name
       if key_name.nil?
-        puts "Unable to determine SSH key name."
+        @log.fatal "Unable to determine SSH key name."
         exit 4
       end
 
@@ -190,7 +204,7 @@ module EC2Launcher
       end
 
       if missing_security_groups.length > 0
-        puts "ERROR: Missing security groups: #{missing_security_groups.join(', ')}"
+        @log.fatal "ERROR: Missing security groups: #{missing_security_groups.join(', ')}"
         exit 3
       end
 
@@ -301,37 +315,37 @@ module EC2Launcher
       aws_keyfile = @environment.aws_keyfile
 
       ##############################
-      puts
-      puts "Availability zone: #{availability_zone}"
-      puts "Key name            : #{key_name}"
-      puts "Security groups     : " + security_groups.collect {|name| "#{name} (#{sg_map[name].security_group_id})"}.join(", ")
-      puts "Instance type       : #{instance_type}"
-      puts "Architecture        : #{instance_architecture}"
-      puts "AMI name            : #{ami.ami_name}"
-      puts "AMI id              : #{ami.ami_id}"
-      puts "ELB                 : #{elb_name}" if elb_name
-      puts "Chef PEM            : #{chef_validation_pem_url}"
-      puts "AWS key file        : #{aws_keyfile}"
-      puts "Roles               : #{roles.join(', ')}"
-      puts "Gems                : #{gems.join(', ')}"
-      puts "Packages            : #{packages.join(', ')}"
+      @log.info
+      @log.info "Availability zone: #{availability_zone}"
+      @log.info "Key name            : #{key_name}"
+      @log.info "Security groups     : " + security_groups.collect {|name| "#{name} (#{sg_map[name].security_group_id})"}.join(", ")
+      @log.info "Instance type       : #{instance_type}"
+      @log.info "Architecture        : #{instance_architecture}"
+      @log.info "AMI name            : #{ami.ami_name}"
+      @log.info "AMI id              : #{ami.ami_id}"
+      @log.info "ELB                 : #{elb_name}" if elb_name
+      @log.info "Chef PEM            : #{chef_validation_pem_url}"
+      @log.info "AWS key file        : #{aws_keyfile}"
+      @log.info "Roles               : #{roles.join(', ')}"
+      @log.info "Gems                : #{gems.join(', ')}"
+      @log.info "Packages            : #{packages.join(', ')}"
       if subnet
         cidr_block = ec2.subnets[subnet].cidr_block
-        puts "VPC Subnet          : #{subnet} (#{cidr_block})"
+        @log.info "VPC Subnet          : #{subnet} (#{cidr_block})"
       end
-      puts ""
+      @log.info ""
       fqdn_names.each do |fqdn|
-        puts "Name                : #{fqdn}"
+        @log.info "Name                : #{fqdn}"
       end
 
       unless block_device_mappings.empty?
-        puts ""
-        puts "Block devices     :"
+        @log.info ""
+        @log.info "Block devices     :"
         block_device_mappings.keys.sort.each do |key|
           if block_device_mappings[key] =~ /^ephemeral/
-              puts "  Block device   : #{key}, #{block_device_mappings[key]}"
+              @log.info "  Block device   : #{key}, #{block_device_mappings[key]}"
           else
-              puts "  Block device   : #{key}, #{block_device_mappings[key][:volume_size]}GB, " +
+              @log.info "  Block device   : #{key}, #{block_device_mappings[key][:volume_size]}GB, " +
                  "#{block_device_mappings[key][:snapshot_id]}, " +
                  "(#{block_device_mappings[key][:delete_on_termination] ? 'auto-delete' : 'no delete'})"
           end
@@ -339,7 +353,7 @@ module EC2Launcher
       end
 
       if chef_validation_pem_url.nil?
-        puts "***ERROR*** Missing the URL For the Chef Validation PEM file."
+        @log.fatal "***ERROR*** Missing the URL For the Chef Validation PEM file."
         exit 3
       end
 
@@ -347,10 +361,10 @@ module EC2Launcher
       if @options.show_defaults || @options.show_user_data
         if @options.show_user_data
           user_data = build_launch_command(fqdn_names[0], short_hostnames[0], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
-          puts ""
-          puts "---user-data---"
-          puts user_data
-          puts "---user-data---"
+          @log.info ""
+          @log.info "---user-data---"
+          @log.info user_data
+          @log.info "---user-data---"
         end
         exit 0
       end
@@ -358,7 +372,7 @@ module EC2Launcher
       ##############################
       # Launch the new intance
       ##############################
-      puts ""
+      @log.warn ""
       instances = []
       fqdn_names.each_index do |i|
         block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
@@ -369,14 +383,14 @@ module EC2Launcher
 
         public_dns_name = instance.public_dns_name.nil? ? "no public dns" : instance.public_dns_name
         private_dns_name = instance.private_dns_name.nil? ? "no private dns" : instance.private_dns_name
-        puts "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
+        @log.warn "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
       end
 
-      puts "********************"    
+      @log.warn "********************"    
       fqdn_names.each_index do |i|
         public_dns_name = instances[i].public_dns_name.nil? ? "n/a" : instances[i].public_dns_name
         private_dns_name = instances[i].private_dns_name.nil? ? "n/a" : instances[i].private_dns_name
-        puts "** New instance: #{fqdn_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
+        @log.warn "** New instance: #{fqdn_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
       end
 
       ##############################
@@ -389,7 +403,7 @@ module EC2Launcher
       ##############################
       # COMPLETED
       ##############################
-      puts "********************"    
+      @log.warn "********************"    
     end
 
     # Attaches an instance to the specified ELB.
@@ -399,8 +413,8 @@ module EC2Launcher
     #
     def attach_to_elb(instance, elb_name)
       begin
-        puts ""
-        puts "Adding to ELB: #{elb_name}"
+        @log.info ""
+        @log.info "Adding to ELB: #{elb_name}"
         elb = AWS::ELB.new
         AWS.memoize do
           # Build list of availability zones for any existing instances
@@ -429,7 +443,7 @@ module EC2Launcher
           elb.load_balancers[elb_name].instances.register(instance)
         end
       rescue StandardError => bang
-        puts "Error adding to load balancers: " + bang.to_s
+        @log.error "Error adding to load balancers: " + bang.to_s
       end
     end
 
@@ -472,7 +486,7 @@ module EC2Launcher
     #
     # @return [AmiDetails]  AMI name and id.
     def find_ami(arch, virtualization, ami_name_match, id = nil)
-      puts "Searching for AMI..."
+      @log.info "Searching for AMI..."
       ami_name = ""
       ami_id = ""
 
@@ -529,7 +543,7 @@ module EC2Launcher
         abort("You MUST either set the AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY environment variables or use the command line options.")
       end
 
-      puts "Initializing AWS connection..."
+      @log.info "Initializing AWS connection..."
       AWS.config({
         :access_key_id => aws_access_key,
         :secret_access_key => aws_secret_access_key
@@ -551,7 +565,7 @@ module EC2Launcher
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
     def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
-      puts "Launching instance... #{hostname}"
+      @log.warn "Launching instance... #{hostname}"
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
         if block_device_mappings.nil? || block_device_mappings.keys.empty?
@@ -579,7 +593,7 @@ module EC2Launcher
       end
       sleep 5
 
-      puts "  Waiting for instance to start up..."
+      @log.info "  Waiting for instance to start up..."
       sleep 2
       instance_ready = false
       until instance_ready
@@ -591,13 +605,13 @@ module EC2Launcher
       end
 
       unless new_instance.status == :running
-        puts "Instance launch failed. Aborting."
+        @log.fatal "Instance launch failed. Aborting."
         exit 5
       end
 
       ##############################
       # Tag instance
-      puts "Tagging instance..."
+      @log.info "Tagging instance..."
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: name, value: #{hostname}") { new_instance.add_tag("Name", :value => hostname) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: environment, value: #{@environment.name}") { new_instance.add_tag("environment", :value => @environment.name) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: application, value: #{@application.name}") { new_instance.add_tag("application", :value => @application.name) }
@@ -605,7 +619,7 @@ module EC2Launcher
       ##############################
       # Tag volumes
       unless block_device_tags.empty?
-        puts "Tagging volumes..."
+        @log.info "Tagging volumes..."
         AWS.start_memoizing
         block_device_tags.keys.each do |device|
           v = new_instance.block_device_mappings[device].volume
@@ -675,7 +689,7 @@ module EC2Launcher
         if fail_on_error
           abort("ERROR - #{name} directories not found: #{temp_dirs}")
         else
-          puts "WARNING - #{name} directories not found: #{temp_dirs}"
+          @log.warn "WARNING - #{name} directories not found: #{temp_dirs}"
         end
       end
 

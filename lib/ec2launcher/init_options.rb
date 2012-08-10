@@ -98,7 +98,7 @@ module EC2Launcher
           @options.instance_type = instance_type
         end
 
-        opts.on("-v", "--volume-size SIZE", Integer, "EBS volume size in GB. Defaults to #{EC2Launcher::DEFAULT_VOLUME_SIZE} GB") do |volume_size|
+        opts.on("--volume-size SIZE", Integer, "EBS volume size in GB. Defaults to #{EC2Launcher::DEFAULT_VOLUME_SIZE} GB") do |volume_size|
           @options.volume_size = volume_size
         end
 
@@ -115,6 +115,14 @@ module EC2Launcher
 
         opts.separator ""
         opts.separator "Common options:"
+
+        opts.on_tail("-q", "--quiet", "Display as little information as possible.") do
+          @options.verbosity = :quiet
+        end
+
+        opts.on_tail("-v", "--verbose", "Display as much information as possible.") do
+          @options.verbosity = :verbose
+        end
 
         # No argument, shows at tail.  This will print an options summary.
         # Try it and see!
@@ -151,6 +159,8 @@ module EC2Launcher
       @options.zone = nil
       @options.instance_type = nil
       @options.volume_size = nil
+
+      @options.verbosity = :normal
 
       @options.directory = "./"
 

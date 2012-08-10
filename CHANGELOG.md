@@ -1,6 +1,8 @@
 ## 1.0.23
 
 * Display subnet CIDR block when launching instances into VPCs.
+* Revamped output to use log4r.
+* Added command line flags to control output verbosity.
 
 ## 1.0.22
 

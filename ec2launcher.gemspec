@@ -15,4 +15,5 @@ Gem::Specification.new do |gem|
   gem.version       = EC2Launcher::VERSION
 
   gem.add_runtime_dependency "aws-sdk", [">= 1.5.0"]
+  gem.add_runtime_dependency "log4r"
 end

@@ -2,6 +2,7 @@
 
 require 'rubygems'
 
+require 'open3'
 require 'optparse'
 require 'ostruct'
 

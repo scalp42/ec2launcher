@@ -315,7 +315,10 @@ module EC2Launcher
       puts "Roles               : #{roles.join(', ')}"
       puts "Gems                : #{gems.join(', ')}"
       puts "Packages            : #{packages.join(', ')}"
-      puts "VPC Subnet          : #{subnet}" if subnet
+      if subnet
+        cidr_block = ec2.subnets[subnet].cidr_block
+        puts "VPC Subnet          : #{subnet} (#{cidr_block})"
+      end
       puts ""
       fqdn_names.each do |fqdn|
         puts "Name                : #{fqdn}"

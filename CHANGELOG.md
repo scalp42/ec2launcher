@@ -1,3 +1,7 @@
+## 1.0.23
+
+* Display subnet CIDR block when launching instances into VPCs.
+
 ## 1.0.22
 
 * Fixed additional bug with merging applications.

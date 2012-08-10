@@ -379,8 +379,8 @@ if instance_data["email_notifications"]
   })
   ses = AWS::SimpleEmailService.new
   ses.send_email(
-    :from => instance_data["email_notification"]["from"],
-    :to => instance_data["email_notification"]["to"],
+    :from => instance_data["email_notifications"]["from"],
+    :to => instance_data["email_notifications"]["to"],
     :subject => "Server setup complete: #{hostname}",
     :body_text => "Server setup is complete for Host: #{hostname}, Environment: #{options.environ}, Application: #{options.application}",
     :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{hostname}</div><div><strong>Environment:</strong> #{options.environ}</div><div><strong>Application:</strong> #{options.application}</div>"

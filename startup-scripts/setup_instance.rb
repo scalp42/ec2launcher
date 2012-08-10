@@ -365,8 +365,8 @@ if instance_data["email_notifications"]
   # Email notification through SES
   puts "Email notification through SES..."
   AWS.config({
-    :access_key_id => instance_data["email_notification"]["ses_access_key"],
-    :secret_access_key => instance_data["email_notification"]["ses_secret_key"]
+    :access_key_id => instance_data["email_notifications"]["ses_access_key"],
+    :secret_access_key => instance_data["email_notifications"]["ses_secret_key"]
   })
   ses = AWS::SimpleEmailService.new
   ses.send_email(

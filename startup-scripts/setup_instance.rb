@@ -355,7 +355,7 @@ end
 # Launch Chef
 def run_chef_client(chef_path)
   result = 0
-  Open3.popen3(command) do |stdin, stdout, stderr, wait_thr|
+  Open3.popen3(chef_path) do |stdin, stdout, stderr, wait_thr|
     stdout.each do |line|
       puts line
     end

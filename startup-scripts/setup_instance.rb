@@ -361,7 +361,7 @@ end
 ##############################
 # EMAIL NOTIFICATION
 ##############################
-if instance_data["email_notification"]
+if instance_data["email_notifications"]
   # Email notification through SES
   puts "Email notification through SES..."
   AWS.config({

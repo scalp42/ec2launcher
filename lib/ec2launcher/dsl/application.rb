@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2012 Sean Laurent
 #
+require 'ec2launcher/dsl/helper'
 require 'ec2launcher/dsl/block_device'
 require 'ec2launcher/dsl/email_notification'
 require 'ec2launcher/security_group_handler'
@@ -32,9 +33,21 @@ module EC2Launcher
 		# Represents a single application stack.
 		class Application
 			include EC2Launcher::DSL::EmailNotifications
+			include EC2Launcher::DSL::Helper
 			include EC2Launcher::SecurityGroupHandler
 
+
 			attr_reader :name
+
+			dsl_accessor :basename
+			dsl_accessor :inherit
+			dsl_accessor :instance_type
+			dsl_accessor :name_suffix
+			dsl_accessor :subnet
+
+			dsl_array_accessor :gems
+			dsl_array_accessor :packages
+			dsl_array_accessor :roles
 
 			def initialize(name)
 				@name = name
@@ -71,19 +84,6 @@ module EC2Launcher
 					@availability_zone
 				else
 					@availability_zone = zone[0].to_s
-					self
-				end
-			end
-
-			# Defines a shorter name when building a host name for new instances. Optional.
-			# By default, new instances are named using the full application name. If you 
-			# specify basename, it will be used instead. Typically, this is used if you 
-			# want a shorter version of the full application name.
-			def basename(*name)
-				if name.empty?
-					@basename
-				else
-					@basename = name[0]
 					self
 				end
 			end
@@ -177,27 +177,6 @@ module EC2Launcher
 				end
 			end
 
-			# Indicates that this application should inherit all of its settings from another named application.
-			# Optional.
-			def inherit(*inherit_type)
-				if inherit_type.empty?
-					@inherit_type
-				else
-					@inherit_type = inherit_type[0]
-				end
-			end
-
-			# The Amazon EC2 instance type that should be used for new instances.
-			# Must be one of EC2Launcher::INSTANCE_TYPES.
-			def instance_type(*type_name)
-				if type_name.empty?
-					@instance_type
-				else
-					@instance_type = type_name[0]
-					self
-				end
-			end
-
 			# Takes values from the other server type and merges them into this one
 			def merge(other_server)
 				@name = other_server.name
@@ -234,38 +213,6 @@ module EC2Launcher
 				end
 			end
 
-			def name_suffix(*suffix)
-				if suffix.empty?
-					@name_suffix
-				else
-					@name_suffix = suffix[0]
-				end
-			end
-
-			def packages(*packages)
-				if packages.empty?
-					@packages
-				else
-					@packages = packages[0]
-					self
-				end
-			end
-
-			def roles(*roles)
-				if roles.empty?
-					@roles
-				else
-					@roles = [] if @roles.nil?
-					if roles[0].kind_of? Array
-						@roles += roles[0]
-					else
-						@roles = []
-						@roles << roles[0]
-					end
-					self
-				end
-			end
-
 			def roles_for_environment(environment)
 				roles = []
 				roles += @roles unless @roles.nil?
@@ -287,15 +234,6 @@ module EC2Launcher
 				groups ||= @security_groups[:default]
 				groups ||= []
 				groups
-			end
-
-			def subnet(*subnet)
-				if subnet.empty?
-					@subnet
-				else
-					@subnet = subnet[0]
-					self
-				end
 			end
 
 			def load(dsl)

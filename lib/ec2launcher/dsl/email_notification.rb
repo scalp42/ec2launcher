@@ -1,10 +1,12 @@
 #
 # Copyright (c) 2012 Sean Laurent
 #
+require 'ec2launcher/dsl/helper'
 
 module EC2Launcher
   module DSL
     module EmailNotifications
+
       attr_reader :email_notifications
 
       def email_notification(&block)
@@ -15,44 +17,12 @@ module EC2Launcher
     end
 
     class EmailNotification
-      def initialize()
-      end
+      include EC2Launcher::DSL::Helper
 
-      def from(*from)
-        if from.empty?
-          @from
-        else
-          @from = from[0]
-          self
-        end
-      end
-
-      def to(*to)
-        if to.empty?
-          @to
-        else
-          @to = to[0]
-          self
-        end
-      end
-
-      def ses_access_key(*ses_access_key)
-        if ses_access_key.empty?
-          @ses_access_key
-        else
-          @ses_access_key = ses_access_key[0]
-          self
-        end
-      end
-
-      def ses_secret_key(*ses_secret_key)
-        if ses_secret_key.empty?
-          @ses_secret_key
-        else
-          @ses_secret_key = ses_secret_key[0]
-          self
-        end
-      end
+      dsl_accessor :from
+      dsl_accessor :to
+      dsl_accessor :ses_access_key
+      dsl_accessor :ses_secret_key
 
       def to_json(*a)
         {

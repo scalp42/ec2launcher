@@ -827,8 +827,9 @@ module EC2Launcher
       user_data += "\necho '#{setup_json.to_json}' > /tmp/setup.json"
 
       # pre-commands, if necessary
-      unless @environment.precommands.nil? || @environment.precommands.empty?
-        commands = @environment.precommands.collect {|cmd| substitute_command_variables(cmd) }
+      puts "Precommands: #{@environment.precommands}"
+      unless @environment.precommand.nil? || @environment.precommand.empty?
+        commands = @environment.precommand.collect {|cmd| substitute_command_variables(cmd) }
         user_data += "\n" + commands.join("\n")
       end
 
@@ -875,8 +876,8 @@ module EC2Launcher
       end
 
       # Post commands
-      unless @environment.postcommands.nil? || @environment.postcommands.empty?
-        commands = @environment.postcommands.collect {|cmd| substitute_command_variables(cmd) }
+      unless @environment.postcommand.nil? || @environment.postcommand.empty?
+        commands = @environment.postcommand.collect {|cmd| substitute_command_variables(cmd) }
         user_data += "\n" + commands.join("\n")
       end
       user_data

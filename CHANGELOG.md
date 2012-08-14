@@ -1,3 +1,7 @@
+## 1.0.28
+
+* Fixed problem with pre/post command inheritance.
+
 ## 1.0.27
 
 * Fixed DSL accessor method access.

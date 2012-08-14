@@ -47,8 +47,8 @@ module EC2Launcher
 				@email_notifications = nil
 				@gems = []
 				@packages = []
-				@precommands = []
-				@postcommands = []
+				@precommand = []
+				@postcommand = []
 				@roles = []
 				@security_groups = {}
 			end
@@ -66,8 +66,8 @@ module EC2Launcher
 				@gems += other_env.gems unless other_env.gems.nil?
 				@packages += other_env.packages unless other_env.packages.nil?
 				@roles += other_env.roles unless other_env.roles.nil?
-				@precommands += other_env.precommands unless other_env.precommands.nil?
-				@postcommands += other_env.postcommands unless other_env.postcommands.nil?
+				@precommand += other_env.precommand unless other_env.precommand.nil?
+				@postcommand += other_env.postcommand unless other_env.postcommand.nil?
 				unless other_env.security_groups.nil?
 					other_env.security_groups.keys.each do |key|
 						@security_groups[key] = [] if @security_groups[key].nil?

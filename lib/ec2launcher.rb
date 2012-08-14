@@ -829,11 +829,7 @@ module EC2Launcher
       user_data += "\necho '#{setup_json.to_json}' > /tmp/setup.json"
 
       # pre-commands, if necessary
-      puts "Precommands: #{@environment.precommands}"
-      unless @environment.precommand.nil? || @environment.precommand.empty?
-        commands = @environment.precommand.collect {|cmd| substitute_command_variables(cmd) }
-        user_data += "\n" + commands.join("\n")
-      end
+      user_data += build_commands(@environment.precommand)
 
       user_data += "\n"
 
@@ -872,17 +868,26 @@ module EC2Launcher
       end
 
       # Add extra requested commands to the launch sequence
-      unless @options.commands.nil?
-        commands = @options.commands.collect {|cmd| substitute_command_variables(cmd) }
-        user_data += "\n" + commands.join("\n")
-      end
+      user_data += build_commands(@options.commands)
 
       # Post commands
-      unless @environment.postcommand.nil? || @environment.postcommand.empty?
-        commands = @environment.postcommand.collect {|cmd| substitute_command_variables(cmd) }
-        user_data += "\n" + commands.join("\n")
-      end
+      user_data += build_commands(@environment.postcommand)
+
       user_data
+    end
+
+    # Builds a bash script snipp containing a list of commands to execute.
+    #
+    # @param [Array<String>] commands List of commands to run. Can be nil.
+    #
+    # @return [String] String containing newline separated bash commands to run or an empty string if no commands.
+    def build_commands(commands)
+      command_str = ""
+      unless commands.nil? || commands.empty?
+        processed_commands = commands.collect {|cmnd| substitute_command_variables(cmd) }
+        command_str = "\n" + processed_commands.join("\n")
+      end
+      command_str
     end
   end
 end

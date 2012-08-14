@@ -464,19 +464,6 @@ module EC2Launcher
       dirs
     end
 
-    # Builds the path to an executable.
-    def build_path(instance_path, executable, default_path)
-      app_path = default_path
-      unless instance_path.nil?
-        if instance_path =~ /#{executable}$/
-          app_path = instance_path
-        else
-          app_path = File.join(instance_path, executable)
-        end
-      end
-      app_path
-    end
-
     # Searches for the most recent AMI matching the criteria.
     #
     # @param [String] arch system archicture, `i386` or `x86_64`

@@ -45,7 +45,7 @@ class Module
             @#{sym}
           else
             if val[0].kind_of? String
-              @#{sym} = /#{val[0]}/
+              @#{sym} = Regexp.new(val[0])
             else
               @#{sym} = val[0]
             end

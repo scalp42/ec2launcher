@@ -25,7 +25,13 @@ module EC2Launcher
         puts "AWS::EC2::Errors::RequestLimitExceeded ... retrying #{message} in #{sleep_time} seconds"
         sleep sleep_time
         run_with_backoff(max_time, sleep_time * 2, message, &block)
-      end  
+      rescue AWS::EC2::Errors::InstanceLimitExceeded
+        puts "AWS::EC2::Errors::InstanceLimitExceeded ... aborting launch."
+        return false
+      rescue StdError => bang
+        print "Error for #{message}: #{bang}"
+        return false
+      end
       true
     end
 

@@ -1,3 +1,7 @@
+## 1.0.26
+
+* More exception handling during launch process.
+
 ## 1.0.25
 
 * Fixed duplicate commands.

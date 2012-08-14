@@ -1,6 +1,8 @@
 #
 # Copyright (c) 2012 Sean Laurent
 #
+require 'ec2launcher/dsl/helper'
+
 module EC2Launcher
   module DSL
     class ConfigDSL
@@ -31,52 +33,16 @@ config do
   config_manager "chef"
 end
 }.gsub(/^ /, '')
+
+      dsl_accessor :package_manager
+      dsl_accessor :config_manager
+
+      dsl_array_accessor :applications
+      dsl_array_accessor :environments
       
       def initialize()
         @environments = []
         @applications = []
-      end
-
-      def environments(*environments)
-        if environments.empty?
-          @environments
-        else
-          if environments[0].kind_of? Array
-            @environments = @environments[0]
-          else
-            @environments = [ environments[0] ]
-          end
-          self
-        end
-      end
-
-      def applications(*applications)
-        if applications.empty?
-          @applications
-        else
-          if applications[0].kind_of? Array
-            @applications = @applications[0]
-          else
-            @applications = [ applications[0] ]
-          end
-          self
-        end
-      end
-
-      def package_manager(*package_manager)
-        if package_manager.empty?
-          @package_manager
-        else
-          @package_manager = package_manager[0]
-        end
-      end
-
-      def config_manager(*config_manager)
-        if config_manager.empty?
-          @config_manager
-        else
-          @config_manager = config_manager[0]
-        end
       end
     end
   end

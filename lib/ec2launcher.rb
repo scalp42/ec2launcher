@@ -381,15 +381,15 @@ module EC2Launcher
         instance = launch_instance(fqdn_names[i], ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
         instances << instance
 
-        public_dns_name = instance.public_dns_name.nil? ? "no public dns" : instance.public_dns_name
-        private_dns_name = instance.private_dns_name.nil? ? "no private dns" : instance.private_dns_name
+        public_dns_name = get_instance_dns(instance, true)
+        private_dns_name = get_instance_dns(instance, false)
         @log.info "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
       end
 
       @log.info "********************"    
       fqdn_names.each_index do |i|
-        public_dns_name = instances[i].public_dns_name.nil? ? "n/a" : instances[i].public_dns_name
-        private_dns_name = instances[i].private_dns_name.nil? ? "n/a" : instances[i].private_dns_name
+        public_dns_name = get_instance_dns(instances[i], true)
+        private_dns_name = get_instance_dns(instances[i], false)
         @log.warn "** New instance: #{fqdn_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
       end
 
@@ -515,6 +515,19 @@ module EC2Launcher
       end
 
       AmiDetails.new(ami_name, ami_id)
+    end
+
+    # Retrieves either the public or private DNS entry for an EC2 Instance. Returns "n/a" if the
+    # request DNS entry is undefined.
+    #
+    # @param [AWS::EC2::Instance] ec2 instance
+    # @param [Boolean] True for public DNS or False for private DNS
+    #
+    # @return [String] DNS for the instance or "n/a" if undefined.
+    #
+    def get_instance_dns(ec2_instance, public = true)
+      dns_name = public ? instance.public_dns_name : instance.private_dns_name
+      dns_name.nil? ? "n/a" : dns_name
     end
 
     # Initializes connections to the AWS SDK

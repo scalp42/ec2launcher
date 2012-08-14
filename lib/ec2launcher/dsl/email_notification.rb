@@ -17,8 +17,6 @@ module EC2Launcher
     end
 
     class EmailNotification
-      include EC2Launcher::DSL::Helper
-
       dsl_accessor :from
       dsl_accessor :to
       dsl_accessor :ses_access_key

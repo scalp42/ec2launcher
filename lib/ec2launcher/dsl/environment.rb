@@ -9,7 +9,6 @@ module EC2Launcher
 	module DSL
 		class Environment
 			include EC2Launcher::DSL::EmailNotifications
-			include EC2Launcher::DSL::Helper
 			include EC2Launcher::SecurityGroupHandler
 
 			attr_reader :name

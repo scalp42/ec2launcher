@@ -1,3 +1,7 @@
+## 1.0.27
+
+* Fixed DSL accessor method access.
+
 ## 1.0.26
 
 * More exception handling during launch process.

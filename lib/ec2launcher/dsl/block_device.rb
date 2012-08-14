@@ -6,8 +6,6 @@ require 'ec2launcher/dsl/helper'
 module EC2Launcher
 	module DSL
 		class BlockDevice
-      include EC2Launcher::DSL::Helper
-
 			attr_reader :mount_point
 			attr_reader :name
 

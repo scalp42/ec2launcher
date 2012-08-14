@@ -33,7 +33,6 @@ module EC2Launcher
 		# Represents a single application stack.
 		class Application
 			include EC2Launcher::DSL::EmailNotifications
-			include EC2Launcher::DSL::Helper
 			include EC2Launcher::SecurityGroupHandler
 
 

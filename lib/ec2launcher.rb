@@ -48,6 +48,8 @@ module EC2Launcher
     def launch(options)
       @options = options
 
+      @log.info "ec2launcher v#{EC2Launcher::VERSION}"
+
       @log.level = case @options.verbosity 
         when :quiet then WARN
         when :verbose then DEBUG

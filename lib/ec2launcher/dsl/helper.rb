@@ -36,4 +36,23 @@ class Module
       }
     }
   end
+
+  def dsl_regex_accessor(*symbols)
+    symbols.each { |sym|
+      class_eval %{
+        def #{sym}(*val)
+          if val.empty?
+            @#{sym}
+          else
+            if val[0].kind_of? String
+              @#{sym} = /#{val[0]}/
+            else
+              @#{sym} = val[0]
+            end
+            self
+          end
+        end
+      }
+    }
+  end
 end

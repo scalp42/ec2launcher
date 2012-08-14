@@ -38,6 +38,7 @@ module EC2Launcher
 
 			attr_reader :name
 
+			dsl_accessor :availability_zone
 			dsl_accessor :basename
 			dsl_accessor :inherit
 			dsl_accessor :instance_type
@@ -48,6 +49,12 @@ module EC2Launcher
 			dsl_array_accessor :packages
 			dsl_array_accessor :roles
 
+			# Name of the AMI to use for new instances. Optional.
+			# Can be either a string or a regular expression.
+			#
+			# @param [Array, nil] Either an array of parameters or nil to return the AMI name.
+			dsl_regex_accessor :ami_name
+
 			def initialize(name)
 				@name = name
 				@email_notifications = nil
@@ -57,34 +64,6 @@ module EC2Launcher
 				@name = name
 				yield self
 				self
-			end
-
-			# Name of the AMI to use for new instances. Optional.
-			# Can be either a string or a regular expression.
-			#
-			# @param [Array, nil] Either an array of parameters or nil to return the AMI name.
-			def ami_name(*ami_name)
-				if ami_name.empty?
-					@ami_name
-				else
-					if ami_name[0].kind_of? String
-						@ami_name = /#{ami_name[0]}/
-					else
-						@ami_name = ami_name[0]
-					end
-					self
-				end
-			end
-
-			# Name of the availability zone to use for new instances. Optional.
-			# Must be one of EC2Launcher::AVAILABILITY_ZONES.
-			def availability_zone(*zone)
-				if zone.empty?
-					@availability_zone
-				else
-					@availability_zone = zone[0].to_s
-					self
-				end
 			end
 
 			def block_devices(*block_device_data)
@@ -152,26 +131,6 @@ module EC2Launcher
 					end
 					@environment_roles[env_name] = environment_data
 
-					self
-				end
-			end
-
-			# Gems to install. Optional.
-			#
-			# Expects either a single String naming a gem to install or
-			# an Array of gems.
-			#
-			# Can be specified multiple times.
-			def gems(*gems)
-				if gems.empty?
-					@gems
-				else
-					@gems = [] if @gems.nil?
-					if gems[0].kind_of? Array
-						@gems += gems[0]
-					else
-						@gems << gems[0]
-					end
 					self
 				end
 			end

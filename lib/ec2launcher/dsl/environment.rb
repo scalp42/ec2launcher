@@ -15,6 +15,7 @@ module EC2Launcher
 			attr_reader :precommands
 			attr_reader :postcommands
 
+			dsl_accessor :availability_zone
 			dsl_accessor :aws_keyfile
 			dsl_accessor :chef_path
 			dsl_accessor :chef_server_url
@@ -28,11 +29,18 @@ module EC2Launcher
 			dsl_accessor :short_name
 			dsl_accessor :subnet
 
+			dsl_array_accessor :aliases
 			dsl_array_accessor :gems
 			dsl_array_accessor :packages
 			dsl_array_accessor :precommand
 			dsl_array_accessor :postcommand
 			dsl_array_accessor :roles
+
+			# Name of the AMI to use for new instances. Optional.
+			# Can be either a string or a regular expression.
+			#
+			# @param [Array, nil] Either an array of parameters or nil to return the AMI name.
+			dsl_regex_accessor :ami_name
 
 			def initialize()
 				@aliases = []
@@ -49,40 +57,6 @@ module EC2Launcher
 				@name = name
 				yield self
 				self
-			end
-
-			def aliases(*aliases)
-				if aliases.empty?
-					@aliases
-				else
-					if aliases[0].kind_of? String
-						@aliases = [ aliases[0] ]
-					else
-						@aliases = aliases[0]
-					end
-				end
-			end
-
-			def ami_name(*ami_name)
-				if ami_name.empty?
-					@ami_name
-				else
-					if ami_name[0].kind_of? String
-						@ami_name = /#{ami_name[0]}/
-					else
-						@ami_name = ami_name[0]
-					end
-					self
-				end
-			end
-
-			def availability_zone(*zone)
-				if zone.empty?
-					@availability_zone
-				else
-					@availability_zone = zone[0].to_s
-					self
-				end
 			end
 
 			# Takes values from the other environment and merges them into this one

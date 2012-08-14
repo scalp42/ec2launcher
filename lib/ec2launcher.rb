@@ -528,7 +528,7 @@ module EC2Launcher
     # @return [String] DNS for the instance or "n/a" if undefined.
     #
     def get_instance_dns(ec2_instance, public = true)
-      dns_name = public ? instance.public_dns_name : instance.private_dns_name
+      dns_name = public ? ec2_instance.public_dns_name : ec2_instance.private_dns_name
       dns_name.nil? ? "n/a" : dns_name
     end
 

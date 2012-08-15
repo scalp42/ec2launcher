@@ -884,7 +884,7 @@ module EC2Launcher
     def build_commands(commands)
       command_str = ""
       unless commands.nil? || commands.empty?
-        processed_commands = commands.collect {|cmnd| substitute_command_variables(cmd) }
+        processed_commands = commands.collect {|cmd| substitute_command_variables(cmd) }
         command_str = "\n" + processed_commands.join("\n")
       end
       command_str

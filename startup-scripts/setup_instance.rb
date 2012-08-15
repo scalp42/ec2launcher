@@ -94,6 +94,7 @@ def run_command(cmd)
       puts f.gets
     end
   end
+  $?
 end
 
 option_parser = InitOptions.new
@@ -293,7 +294,13 @@ unless instance_data["block_devices"].nil?
       break
     end
   end
-  puts `yum install mdadm -y` if raid_required
+  if raid_required
+    result = run_command("yum install mdadm -y")
+    unless result == 0
+      run_command("yum clean all")
+      run_command("yum install mdadm -y")
+    end
+  end
 
   raid_array_count = 0
 	next_device_name = "xvdj"

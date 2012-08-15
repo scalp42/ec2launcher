@@ -226,7 +226,8 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
     array_uuid = `mdadm --detail #{raid_device}|grep UUID|awk '// { print $3; }'`.strip
 
     # We have to manually update mdadm.conf as well
-    `echo ARRAY #{raid_device} level=raid#{raid_type.to_s} num-devices=#{devices.count.to_s} meta-data=0.90 UUID=#{array_uuid} |tee -a /etc/mdadm.conf`
+    #`echo ARRAY #{raid_device} level=raid#{raid_type.to_s} num-devices=#{devices.count.to_s} meta-data=0.90 UUID=#{array_uuid} |tee -a /etc/mdadm.conf`
+    `echo ARRAY #{raid_device} level=raid#{raid_type.to_s} num-devices=#{devices.count.to_s} UUID=#{array_uuid} |tee -a /etc/mdadm.conf`
   else
     raid_info = raid_scan_info.split("\n")[-1].split()[1]
   end
@@ -308,6 +309,7 @@ unless instance_data["block_devices"].nil?
 				raid_devices << "/dev/#{device_name}"
 				next_device_name = device_name
 			end
+      puts "Setting up attached raid array... system_arch = #{system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
 			raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device_json["raid_level"].to_i, ! options.clone_host.nil?)
 			mount_device(raid_device_name, block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
       raid_array_count += 1

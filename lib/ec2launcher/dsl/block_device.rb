@@ -32,7 +32,7 @@ module EC2Launcher
 					"name" => @name,
 					"count" => @count,
 					"raid_level" => @raid_level,
-					"mount_point" => @mount_point,
+					"mount_point" => @mount,
 					"owner" => @owner,
 					"group" => @group
 				}.to_json(*a)

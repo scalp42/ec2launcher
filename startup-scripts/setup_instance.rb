@@ -233,7 +233,8 @@ def setup_attached_raid_array(system_arch, devices, raid_device = '/dev/md0', ra
   end
   raid_device_real_path = Pathname.new(raid_info).realpath.to_s
   puts "Using raid device: #{raid_info}. Real path: #{raid_device_real_path}"
-	raid_device_real_path
+	
+  raid_device_real_path
 end
 
 def build_block_devices(count, device = "xvdj", &block)

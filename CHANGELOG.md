@@ -1,3 +1,7 @@
+## 1.0.30
+
+* Fixed bug with EBS volume mount locations.
+
 ## 1.0.28
 
 * Fixed problem with pre/post command inheritance.

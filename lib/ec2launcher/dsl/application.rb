@@ -47,6 +47,8 @@ module EC2Launcher
 
 			dsl_array_accessor :gems
 			dsl_array_accessor :packages
+			dsl_array_accessor :precommand
+			dsl_array_accessor :postcommand
 			dsl_array_accessor :roles
 
 			# Name of the AMI to use for new instances. Optional.

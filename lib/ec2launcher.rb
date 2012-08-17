@@ -830,6 +830,7 @@ module EC2Launcher
 
       # pre-commands, if necessary
       user_data += build_commands(@environment.precommand)
+      user_data += build_commands(@application.precommand)
 
       user_data += "\n"
 
@@ -872,6 +873,7 @@ module EC2Launcher
 
       # Post commands
       user_data += build_commands(@environment.postcommand)
+      user_data += build_commands(@application.postcommand)
 
       user_data
     end

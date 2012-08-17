@@ -1,3 +1,7 @@
+## 1.0.31
+
+* Added support for pre/post commands to applications. Useful for installing webapps.
+
 ## 1.0.30
 
 * Fixed bug with EBS volume mount locations.

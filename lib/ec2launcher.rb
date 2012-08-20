@@ -399,7 +399,7 @@ module EC2Launcher
       # ELB
       ##############################
       unless elb_name.nil?
-        instances.each {|instance| attach_to_elb(instance, elb_name) }
+        instances.each {|instance| attach_to_elb(instance, elb_name, ec2_subnet) }
       end
 
       ##############################
@@ -412,34 +412,37 @@ module EC2Launcher
     #
     # @param [AWS::EC2::Instance] instance newly created EC2 instance.
     # @param [String] elb_name name of ELB.
+    # @param [String] subnet subnet name or id. Defaults to nil.
     #
-    def attach_to_elb(instance, elb_name)
+    def attach_to_elb(instance, elb_name, subnet = nil)
       begin
         @log.info ""
         @log.info "Adding to ELB: #{elb_name}"
         elb = AWS::ELB.new
         AWS.memoize do
-          # Build list of availability zones for any existing instances
-          zones = { }
-          zones[instance.availability_zone] = instance.availability_zone
-          elb.load_balancers[elb_name].instances.each do |elb_instance|
-            zones[elb_instance.availability_zone] = elb_instance.availability_zone
-          end
-      
-          # Build list of existing zones
-          existing_zones = { }
-          elb.load_balancers[elb_name].availability_zones.each do |zone|
-            existing_zones[zone.name] = zone
-          end
-      
-          # Enable zones
-          zones.keys.each do |zone_name|
-            elb.load_balancers[elb_name].availability_zones.enable(zones[zone_name])
-          end
-      
-          # Disable zones
-          existing_zones.keys.each do |zone_name|
-            elb.load_balancers[elb_name].availability_zones.disable(existing_zones[zone_name]) unless zones.has_key?(zone_name)
+          unless subnet
+            # Build list of availability zones for any existing instances
+            zones = { }
+            zones[instance.availability_zone] = instance.availability_zone
+            elb.load_balancers[elb_name].instances.each do |elb_instance|
+              zones[elb_instance.availability_zone] = elb_instance.availability_zone
+            end
+        
+            # Build list of existing zones
+            existing_zones = { }
+            elb.load_balancers[elb_name].availability_zones.each do |zone|
+              existing_zones[zone.name] = zone
+            end
+        
+            # Enable zones
+            zones.keys.each do |zone_name|
+              elb.load_balancers[elb_name].availability_zones.enable(zones[zone_name])
+            end
+        
+            # Disable zones
+            existing_zones.keys.each do |zone_name|
+              elb.load_balancers[elb_name].availability_zones.disable(existing_zones[zone_name]) unless zones.has_key?(zone_name)
+            end
           end
       
           elb.load_balancers[elb_name].instances.register(instance)

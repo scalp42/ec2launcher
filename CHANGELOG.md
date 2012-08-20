@@ -1,3 +1,7 @@
+## 1.0.32
+
+* Copied Alestic's runurl script to avoid problems with LaunchPad is down. Switched to using ec2launcher's copy of runurl.
+
 ## 1.0.31
 
 * Added support for pre/post commands to applications. Useful for installing webapps.

@@ -377,7 +377,11 @@ def run_chef_client(chef_path)
 end
 
 result = run_chef_client(chef_path)
-run_chef_client(chef_path) unless result == 0
+unless result == 0
+  puts "***** ERROR running chef-client. Relaunching chef-client in 30 seconds."
+  sleep(30)
+  run_chef_client(chef_path)
+end
 
 ##############################
 # EMAIL NOTIFICATION

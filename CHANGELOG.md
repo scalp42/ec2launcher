@@ -1,3 +1,7 @@
+## 1.0.34
+
+* Added missing config loader files.
+
 ## 1.0.33
 
 * Refactored config, application and environment loading code to allow easier reuse from other projects.

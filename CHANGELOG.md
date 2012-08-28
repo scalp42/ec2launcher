@@ -1,3 +1,7 @@
+## 1.0.33
+
+* Refactored config, application and environment loading code to allow easier reuse from other projects.
+
 ## 1.0.32
 
 * Copied Alestic's runurl script to avoid problems with LaunchPad is down. Switched to using ec2launcher's copy of runurl.

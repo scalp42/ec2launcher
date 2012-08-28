@@ -19,8 +19,7 @@ require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
 require 'ec2launcher/hostname_generator'
 
-require 'ec2launcher/environment_processor'
-require 'ec2launcher/application_processor'
+require 'ec2launcher/config_wrapper'
 
 include Log4r
 
@@ -60,13 +59,11 @@ module EC2Launcher
       end
       
       # Load configuration data
-      @config = load_config_file(@options.directory)
+      config_wrapper = ConfigWrapper.new(@options.directory)
 
-      env_processor = EnvironmentProcessor.new(@config.environments)
-      app_processor = ApplicationProcess.new(@config.applications)
-
-      @environments = env_processor.environments
-      @applications = app_processor.applications
+      @config = config_wrapper.config
+      @environments = config_wrapper.environments
+      @applications = config_wrapper.applications
     
       if @options.list
         puts ""
@@ -414,23 +411,6 @@ module EC2Launcher
       end
     end
 
-    # Given a list of possible directories, build a list of directories that actually exist.
-    #
-    # @param [Array<String>] directories list of possible directories
-    # @return [Array<String>] directories that exist or an empty array if none of the directories exist.
-    #
-    def build_list_of_valid_directories(directories)
-      dirs = []
-      unless directories.nil?
-        if directories.kind_of? Array
-          directories.each {|d| dirs << d if File.directory?(d) }
-        else
-          dirs << directories if File.directory?(directories)
-        end
-      end
-      dirs
-    end
-
     # Searches for the most recent AMI matching the criteria.
     #
     # @param [String] arch system archicture, `i386` or `x86_64`
@@ -602,37 +582,6 @@ module EC2Launcher
       new_instance
     end
 
-    # Read in the configuration file stored in the workspace directory.
-    # By default this will be './config.rb'.
-    #
-    # @return [EC2Launcher::Config] the parsed configuration object
-    def load_config_file(base_directory)
-      # Load configuration file
-      config_filename = File.join(base_directory, "config.rb")
-      abort("Unable to find 'config.rb' in '#{@options.directory}'") unless File.exists?(config_filename)
-      EC2Launcher::DSL::ConfigDSL.execute(File.read(config_filename)).config
-    end
-
-    # Load and parse an environment file
-    #
-    # @param [String] name full pathname of the environment file to load
-    # @param [EC2Launcher::Environment, nil] default_environment the default environment, 
-    #        which will be used as the base for the new environment. Optional.
-    # @param [Boolean] fail_on_missing print an error and exit if the file does not exist.
-    #
-    # @return [EC2Launcher::Environment] the new environment loaded from the specified file.
-    #
-    def load_environment_file(name, fail_on_missing = false)
-      unless File.exists?(name)
-        abort("Unable to read environment: #{name}") if fail_on_missing
-        return nil
-      end
-
-      load_env = EC2Launcher::DSL::Environment.new
-      load_env.load(File.read(name))
-      load_env
-    end
-
     # Given a string containing a command to run, replaces any inline variables.
     # Supported variables include:
     #   * @APPLICATION@ - name of the application
@@ -658,32 +607,6 @@ module EC2Launcher
       }
       substitutions.keys.each {|key| cmd.gsub!(key, substitutions[key]) }
       cmd
-    end
-
-    # Validates all settings in an application file
-    #
-    # @param [String] filename name of the application file
-    # @param [EC2Launcher::DSL::Application] application application object to validate
-    #
-    def validate_application(filename, application)
-      unless application.availability_zone.nil? || AVAILABILITY_ZONES.include?(application.availability_zone)
-        abort("Invalid availability zone '#{application.availability_zone}' in application '#{application.name}' (#{filename})")
-      end
-
-      unless application.instance_type.nil? || INSTANCE_TYPES.include?(application.instance_type)
-        abort("Invalid instance type '#{application.instance_type}' in application '#{application.name}' (#{filename})")
-      end
-    end
-
-    # Validates all settings in an environment file
-    #
-    # @param [String] filename name of the environment file
-    # @param [EC2Launcher::DSL::Environment] environment environment object to validate
-    #
-    def validate_environment(filename, environment)
-      unless environment.availability_zone.nil? || AVAILABILITY_ZONES.include?(environment.availability_zone)
-        abort("Invalid availability zone '#{environment.availability_zone}' in environment '#{environment.name}' (#{filename})")
-      end
     end
 
     # Builds the launch scripts that should run on the new instance.

@@ -380,7 +380,12 @@ result = run_chef_client(chef_path)
 unless result == 0
   puts "***** ERROR running chef-client. Relaunching chef-client in 30 seconds."
   sleep(30)
-  run_chef_client(chef_path)
+  result = run_chef_client(chef_path)
+end
+unless result == 0
+  puts "***** ERROR running chef-client. Relaunching chef-client in 30 seconds."
+  sleep(30)
+  result = run_chef_client(chef_path)
 end
 
 ##############################

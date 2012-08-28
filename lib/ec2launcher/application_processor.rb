@@ -16,12 +16,12 @@ module EC2Launcher
 
     include DirectoryProcessing
 
-    def initialize(base_directory)
-      applications_directories = process_directory_list(base_directory, "applications", "Applications", true)
+    def initialize(base_directory, applications_directories)
+      app_dirs = process_directory_list(base_directory, applications_directories, "applications", "Applications", true)
 
       # Load applications
       @applications = {}
-      applications_directories.each do |app_dir|
+      app_dirs.each do |app_dir|
         Dir.entries(app_dir).each do |application_name|
           filename = File.join(app_dir, application_name)
           next if File.directory?(filename)
@@ -61,6 +61,21 @@ module EC2Launcher
         end
         new_app.merge(app)
         new_app
+    end
+
+    # Validates all settings in an application file
+    #
+    # @param [String] filename name of the application file
+    # @param [EC2Launcher::DSL::Application] application application object to validate
+    #
+    def validate_application(filename, application)
+      unless application.availability_zone.nil? || AVAILABILITY_ZONES.include?(application.availability_zone)
+        abort("Invalid availability zone '#{application.availability_zone}' in application '#{application.name}' (#{filename})")
+      end
+
+      unless application.instance_type.nil? || INSTANCE_TYPES.include?(application.instance_type)
+        abort("Invalid instance type '#{application.instance_type}' in application '#{application.name}' (#{filename})")
+      end
     end
   end
 end

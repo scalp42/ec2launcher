@@ -23,7 +23,9 @@ module EC2Launcher
 			if target_directories.nil?
 			  dirs << File.join(base_directory, default_directory)
 			else
-			  target_directories.each {|d| dirs << File.join(base_directory, d) }
+			  target_directories.each do |d| 
+			  	dirs << File.join(base_directory, d)
+			  end
 			end
 			valid_directories = build_list_of_valid_directories(dirs)
 
@@ -38,5 +40,24 @@ module EC2Launcher
 
 			valid_directories
 		end
+
+		private
+
+    # Given a list of possible directories, build a list of directories that actually exist.
+    #
+    # @param [Array<String>] directories list of possible directories
+    # @return [Array<String>] directories that exist or an empty array if none of the directories exist.
+    #
+    def build_list_of_valid_directories(directories)
+      dirs = []
+      unless directories.nil?
+        if directories.kind_of? Array
+          directories.each {|d| dirs << d if File.directory?(d) }
+        else
+          dirs << directories if File.directory?(directories)
+        end
+      end
+      dirs
+    end
 	end
 end

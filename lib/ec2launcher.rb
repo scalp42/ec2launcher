@@ -19,6 +19,9 @@ require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
 require 'ec2launcher/hostname_generator'
 
+require 'ec2launcher/environment_processor'
+require 'ec2launcher/application_processor'
+
 include Log4r
 
 module EC2Launcher
@@ -57,54 +60,13 @@ module EC2Launcher
       end
       
       # Load configuration data
-      @config = load_config_file
+      @config = load_config_file(@options.directory)
 
-      environments_directories = process_directory_list(@config.environments, "environments", "Environments", false)
-      applications_directories = process_directory_list(@config.applications, "applications", "Applications", true)
+      env_processor = EnvironmentProcessor.new(@config.environments)
+      app_processor = ApplicationProcess.new(@config.applications)
 
-      # Load other environments
-      @environments = { }
-      environments_directories.each do |env_dir|
-        Dir.entries(env_dir).each do |env_name|
-          filename = File.join(env_dir, env_name)
-          next if File.directory?(filename)
-
-          new_env = load_environment_file(filename)
-          validate_environment(filename, new_env)
-
-          @environments[new_env.name] = new_env
-          new_env.aliases.each {|env_alias| @environments[env_alias] = new_env }
-        end
-      end
-
-      # Load applications
-      @applications = {}
-      applications_directories.each do |app_dir|
-        Dir.entries(app_dir).each do |application_name|
-          filename = File.join(app_dir, application_name)
-          next if File.directory?(filename)
-
-          apps = EC2Launcher::DSL::ApplicationDSL.execute(File.read(filename)).applications
-          apps.each do |new_application|
-            @applications[new_application.name] = new_application
-            validate_application(filename, new_application)
-          end
-        end
-      end
-
-      # Process inheritance rules for environments
-      @environments.values.each do |env|
-        new_env = process_environment_inheritance(env)
-        @environments[new_env.name] = new_env
-      end
-
-      # Process inheritance rules for applications
-      @applications.values.each do |app|
-        next if app.inherit.nil?
-
-        new_app = process_application_inheritance(app)
-        @applications[new_app.name] = new_app
-      end
+      @environments = env_processor.environments
+      @applications = app_processor.applications
     
       if @options.list
         puts ""
@@ -644,9 +606,9 @@ module EC2Launcher
     # By default this will be './config.rb'.
     #
     # @return [EC2Launcher::Config] the parsed configuration object
-    def load_config_file()
+    def load_config_file(base_directory)
       # Load configuration file
-      config_filename = File.join(@options.directory, "config.rb")
+      config_filename = File.join(base_directory, "config.rb")
       abort("Unable to find 'config.rb' in '#{@options.directory}'") unless File.exists?(config_filename)
       EC2Launcher::DSL::ConfigDSL.execute(File.read(config_filename)).config
     end
@@ -669,72 +631,6 @@ module EC2Launcher
       load_env = EC2Launcher::DSL::Environment.new
       load_env.load(File.read(name))
       load_env
-    end
-
-    # Attempts to build a list of valid directories.
-    #
-    # @param [Array<String>, nil] target_directories list of possible directories
-    # @param [String] default_directory directory to use if the target_directories list is empty or nil
-    # @param [String] name name of the type of directory. Used only for error messages.
-    # @param [Boolean] fail_on_error exit with an error if the list of valid directories is empty
-    #
-    # @return [Array<String] list of directories that exist
-    #
-    def process_directory_list(target_directories, default_directory, name, fail_on_error = false)
-      dirs = []
-      if target_directories.nil?
-        dirs << File.join(@options.directory, default_directory)
-      else
-        target_directories.each {|d| dirs << File.join(@options.directory, d) }
-      end
-      valid_directories = build_list_of_valid_directories(dirs)
-
-      if valid_directories.empty?
-        temp_dirs = dirs.each {|d| "'#{d}'"}.join(", ")
-        if fail_on_error
-          abort("ERROR - #{name} directories not found: #{temp_dirs}")
-        else
-          @log.warn "WARNING - #{name} directories not found: #{temp_dirs}"
-        end
-      end
-
-      valid_directories
-    end
-
-    def process_application_inheritance(app)
-        return app if app.inherit.nil?
-
-        # Find base application
-        base_app = @applications[app.inherit]
-        abort("Invalid inheritance '#{app.inherit}' in #{app.name}") if base_app.nil?
-
-        new_app = nil
-        if base_app.inherit.nil?
-          # Clone base application
-          new_app = Marshal::load(Marshal.dump(base_app))
-        else
-          new_app = process_application_inheritance(base_app)
-        end
-        new_app.merge(app)
-        new_app
-    end
-
-    def process_environment_inheritance(env)
-        return env if env.inherit.nil?
-
-        # Find base environment
-        base_env = @environments[env.inherit]
-        abort("Invalid inheritance '#{env.inherit}' in #{env.name}") if base_env.nil?
-
-        new_env = nil
-        if base_env.inherit.nil?
-          # Clone base environment
-          new_env = Marshal::load(Marshal.dump(base_env))
-        else
-          new_env = process_environment_inheritance(base_env)
-        end
-        new_env.merge(env)
-        new_env
     end
 
     # Given a string containing a command to run, replaces any inline variables.

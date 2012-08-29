@@ -1,3 +1,7 @@
+## 1.0.35
+
+* Fixed mistake when launching instances with a specified hostname.
+
 ## 1.0.34
 
 * Added missing config loader files.

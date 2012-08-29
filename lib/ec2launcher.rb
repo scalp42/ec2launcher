@@ -214,7 +214,7 @@ module EC2Launcher
           long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
         else
           long_hostname = @options.hostname
-          short_hostname = hostname_generator.generate_short_name(short_hostname, @environment.domain_name)
+          short_hostname = hostname_generator.generate_short_name(long_hostname, @environment.domain_name)
           if long_hostname == short_hostname
             long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
           end

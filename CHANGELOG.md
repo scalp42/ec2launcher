@@ -1,3 +1,7 @@
+## 1.1.1
+
+* Change to calling Bash directly in startup script, instead of running Bash in sh compatibility mode.
+
 ## 1.1.0
 
 * Backward imcompatible change. Now defaults to running "ruby", "gem", "chef-client" and "knife" based on the environment.

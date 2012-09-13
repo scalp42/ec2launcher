@@ -44,6 +44,7 @@ module EC2Launcher
 			dsl_accessor :instance_type
 			dsl_accessor :name_suffix
 			dsl_accessor :subnet
+			dsl_accessor :use_rvm
 
 			dsl_array_accessor :gems
 			dsl_array_accessor :packages
@@ -60,6 +61,8 @@ module EC2Launcher
 			def initialize(name)
 				@name = name
 				@email_notifications = nil
+
+				@use_rvm = true
 			end
 
 			def application(name)
@@ -171,6 +174,8 @@ module EC2Launcher
 						other_server.security_groups[env_name].each {|sg| @security_groups[env_name] << sg }
 					end
 				end
+
+				@use_rvm = other_server.use_rvm unless other_server.use_rvm.nil?
 			end
 
 			def roles_for_environment(environment)

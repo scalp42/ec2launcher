@@ -1,3 +1,9 @@
+## 1.1.0
+
+* Backward imcompatible change. Now defaults to running "ruby", "gem", "chef-client" and "knife" based on the environment.
+* Automatically attempts to the load RVM (https://rvm.io/) profile data from /etc/profile.d/rvm.sh.
+* Added new "use_rvm" environment and application setting to control loading RVM profile. Defaults to true.
+
 ## 1.0.35
 
 * Fixed mistake when launching instances with a specified hostname.

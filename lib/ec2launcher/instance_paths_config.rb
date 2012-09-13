@@ -7,10 +7,10 @@ module EC2Launcher
     attr_reader :gem_path, :ruby_path, :chef_path, :knife_path
 
     def initialize(environment)
-      @gem_path = build_path(environment.gem_path, "gem", "/usr/bin/gem")
-      @ruby_path = build_path(environment.ruby_path, "ruby", "/usr/bin/ruby")
-      @chef_path = build_path(environment.chef_path, "chef-client", "/usr/bin/chef-client")
-      @knife_path = build_path(environment.knife_path, "knife", "/usr/bin/knife")
+      @gem_path = build_path(environment.gem_path, "gem", "gem")
+      @ruby_path = build_path(environment.ruby_path, "ruby", "ruby")
+      @chef_path = build_path(environment.chef_path, "chef-client", "chef-client")
+      @knife_path = build_path(environment.knife_path, "knife", "knife")
     end
 
     private

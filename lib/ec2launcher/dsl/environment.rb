@@ -28,6 +28,7 @@ module EC2Launcher
 			dsl_accessor :ruby_path
 			dsl_accessor :short_name
 			dsl_accessor :subnet
+			dsl_accessor :use_rvm
 
 			dsl_array_accessor :aliases
 			dsl_array_accessor :gems
@@ -51,6 +52,8 @@ module EC2Launcher
 				@postcommand = []
 				@roles = []
 				@security_groups = {}
+
+				@use_rvm = true
 			end
 
 			def environment(name)
@@ -91,6 +94,7 @@ module EC2Launcher
 				@ruby_path = other_env.ruby_path unless other_env.ruby_path.nil?
 				@subnet = other_env.subnet unless other_env.subnet.nil?
 				@short_name = other_env.short_name unless other_env.short_name.nil?
+				@use_rvm = other_env.use_rvm unless other_env.use_rvm.nil?
 		end
 
 			def load(dsl)

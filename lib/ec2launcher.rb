@@ -647,14 +647,21 @@ module EC2Launcher
       ##############################
       # Build launch command
       user_data = "#!/bin/sh"
-      user_data += "\nexport HOME=/root"
-      user_data += "\necho '#{setup_json.to_json}' > /tmp/setup.json"
+      user_data += "cat > /tmp/setup.json <<End-Of-Message-JSON\n"
+      user_data += setup_json.to_json
+      user_data += "\nEnd-Of-Message-JSON\n"
+      if @environment.use_rvm or @application.use_rvm
+        user_data += <<-EOF
+if [ -s "/etc/profile.d/rvm.sh" ]
+then
+  source /etc/profile.d/rvm.sh
+fi
+EOF
+      end
 
       # pre-commands, if necessary
       user_data += build_commands(@environment.precommand)
       user_data += build_commands(@application.precommand)
-
-      user_data += "\n"
 
       unless @options.skip_setup
         if @run_url_script_cache.nil?

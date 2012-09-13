@@ -371,7 +371,7 @@ def run_chef_client(chef_path)
     stdout.each do |line|
       puts line
     end
-    result = wait_thr.value
+    result = wait_thr.value if wait_thr
   end
   result
 end

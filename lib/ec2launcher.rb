@@ -646,15 +646,17 @@ module EC2Launcher
 
       ##############################
       # Build launch command
-      user_data = "#!/bin/sh"
-      user_data += "cat > /tmp/setup.json <<End-Of-Message-JSON\n"
-      user_data += setup_json.to_json
-      user_data += "\nEnd-Of-Message-JSON\n"
+      user_data = <<EOF
+#!/bin/bash
+cat > /tmp/setup.json <<End-Of-Message-JSON
+#{setup_json.to_json}
+End-Of-Message-JSON
+EOF
       if @environment.use_rvm or @application.use_rvm
         user_data += <<-EOF
-if [ -s "/etc/profile.d/rvm.sh" ]
-then
-  source /etc/profile.d/rvm.sh
+export HOME=/root
+if [[ -s "/etc/profile.d/rvm.sh" ]] ; then
+  source "/etc/profile.d/rvm.sh"
 fi
 EOF
       end

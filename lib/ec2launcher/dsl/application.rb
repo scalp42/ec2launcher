@@ -41,6 +41,7 @@ module EC2Launcher
 			dsl_accessor :availability_zone
 			dsl_accessor :basename
 			dsl_accessor :inherit
+			dsl_accessor :iam_profile
 			dsl_accessor :instance_type
 			dsl_accessor :name_suffix
 			dsl_accessor :subnet
@@ -157,6 +158,7 @@ module EC2Launcher
 					other_server.elb.keys.each {|env_name| @elb[env_name] = other_server.elb[env_name] } 
 				end
 				
+				@iam_profile = other_server.iam_profile unless other_server.iam_profile.nil?
 				@instance_type = other_server.instance_type unless other_server.instance_type.nil?
 				@name_suffix = other_server.name_suffix unless other_server.name_suffix.nil?
 				

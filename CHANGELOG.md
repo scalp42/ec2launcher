@@ -1,3 +1,7 @@
+## 1.1.2
+
+* Added support for specifying an IAM Instance Profile through the environment and/or application.
+
 ## 1.1.1
 
 * Change to calling Bash directly in startup script, instead of running Bash in sh compatibility mode.

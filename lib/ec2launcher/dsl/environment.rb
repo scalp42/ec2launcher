@@ -22,6 +22,7 @@ module EC2Launcher
 			dsl_accessor :chef_validation_pem_url
 			dsl_accessor :domain_name
 			dsl_accessor :gem_path
+			dsl_accessor :iam_profile
 			dsl_accessor :inherit
 			dsl_accessor :key_name
 			dsl_accessor :knife_path
@@ -89,6 +90,7 @@ module EC2Launcher
 				@domain_name = other_env.domain_name unless other_env.domain_name.nil?
 				@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
 				@gem_path = other_env.gem_path unless other_env.gem_path.nil?
+				@iam_profile = other_env.iam_profile unless other_env.iam_profile.nil?
 				@key_name = other_env.key_name unless other_env.key_name.nil?
 				@knife_path = other_env.knife_path unless other_env.knife_path.nil?
 				@ruby_path = other_env.ruby_path unless other_env.ruby_path.nil?

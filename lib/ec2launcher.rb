@@ -170,6 +170,12 @@ module EC2Launcher
       end
 
       ##############################
+      # IAM PROFILE
+      ##############################
+      iam_profile = @environment.iam_profile
+      iam_profile ||= @application.iam_profile
+
+      ##############################
       # INSTANCE TYPE
       ##############################
       instance_type = options.instance_type
@@ -280,6 +286,7 @@ module EC2Launcher
       @log.info "Availability zone: #{availability_zone}"
       @log.info "Key name            : #{key_name}"
       @log.info "Security groups     : " + security_groups.collect {|name| "#{name} (#{sg_map[name].security_group_id})"}.join(", ")
+      @log.info "IAM profile         : #{iam_profile}" if iam_profile
       @log.info "Instance type       : #{instance_type}"
       @log.info "Architecture        : #{instance_architecture}"
       @log.info "AMI name            : #{ami.ami_name}"
@@ -339,7 +346,7 @@ module EC2Launcher
         block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
         user_data = build_launch_command(fqdn_names[i], short_hostnames[i], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
 
-        instance = launch_instance(fqdn_names[i], ami.ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+        instance = launch_instance(fqdn_names[i], ami.ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
         instances << instance
 
         public_dns_name = get_instance_dns(instance, true)
@@ -504,6 +511,7 @@ module EC2Launcher
     # @param [String] availability_zone EC2 availability zone to use
     # @param [String] key_name EC2 SSH key to use.
     # @param [Array<String>] security_group_ids list of security groups ids
+    # @param [String, nil] iam_profile The name or ARN of an IAM instance profile. May be nil.
     # @param [String] instance_type EC2 instance type.
     # @param [String] user_data command data to store pass to the instance in the EC2 user-data field.
     # @param [Hash<String,Hash<String, String>, nil] block_device_mappings mapping of device names to block device details. 
@@ -511,32 +519,26 @@ module EC2Launcher
     # @param [Hash<String,Hash<String, String>>, nil] block_device_tags mapping of device names to hash objects with tags for the new EBS block devices.
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
-    def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
+    def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
       @log.warn "Launching instance... #{hostname}"
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
-        if block_device_mappings.nil? || block_device_mappings.keys.empty?
-          new_instance = @ec2.instances.create(
+        launch_mapping = {
             :image_id => ami_id,
             :availability_zone => availability_zone,
             :key_name => key_name,
             :security_group_ids => security_group_ids,
             :user_data => user_data,
-            :instance_type => instance_type,
-            :subnet => vpc_subnet
-          )
-        else
-          new_instance = @ec2.instances.create(
-            :image_id => ami_id,
-            :availability_zone => availability_zone,
-            :key_name => key_name,
-            :security_group_ids => security_group_ids,
-            :user_data => user_data,
-            :instance_type => instance_type,
-            :block_device_mappings => block_device_mappings,
-            :subnet => vpc_subnet
-          )
+            :instance_type => instance_type
+        }
+        unless block_device_mappings.nil? || block_device_mappings.keys.empty?
+          launch_mapping[:block_device_mappings] = block_device_mappings
         end
+
+        launch_mapping[:iam_profile] = iam_profile if iam_profile
+        launch_mapping[:subnet] = vpc_subnet if vpc_subnet
+
+        new_instance = @ec2.instances.create(launch_mapping)
       end
       sleep 5
 

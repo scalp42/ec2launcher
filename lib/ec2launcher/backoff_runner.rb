@@ -28,7 +28,7 @@ module EC2Launcher
       rescue AWS::EC2::Errors::InstanceLimitExceeded
         puts "AWS::EC2::Errors::InstanceLimitExceeded ... aborting launch."
         return false
-      rescue StdError => bang
+      rescue Exception => bang
         print "Error for #{message}: #{bang}"
         return false
       end

@@ -535,7 +535,7 @@ module EC2Launcher
           launch_mapping[:block_device_mappings] = block_device_mappings
         end
 
-        launch_mapping[:iam_profile] = iam_profile if iam_profile
+        launch_mapping[:iam_instance_profile] = iam_profile if iam_profile
         launch_mapping[:subnet] = vpc_subnet if vpc_subnet
 
         new_instance = @ec2.instances.create(launch_mapping)

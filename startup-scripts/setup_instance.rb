@@ -367,12 +367,18 @@ end
 # Launch Chef
 def run_chef_client(chef_path)
   result = 0
+  last_line = nil
   Open3.popen3(chef_path) do |stdin, stdout, stderr, wait_thr|
     stdout.each do |line|
+      last_line = line
       puts line
     end
     result = wait_thr.value if wait_thr
   end
+  if last_line =~ /[ ]ERROR[:][ ]/
+    result = -1
+  end
+
   result
 end
 

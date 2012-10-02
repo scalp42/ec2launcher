@@ -1,3 +1,13 @@
+## 1.1.3
+
+* Fixed typo with error handling in BackoffRunner.
+* Bumped required version of AWS SDK to support IAM Instance Profiles.
+* Fixed typo with IAM instance profile attribute name.
+
+## 1.1.2
+
+* Added support for specifying an IAM Instance Profile through the environment and/or application.
+
 ## 1.1.1
 
 * Change to calling Bash directly in startup script, instead of running Bash in sh compatibility mode.

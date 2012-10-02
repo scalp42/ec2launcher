@@ -14,6 +14,6 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
   gem.version       = EC2Launcher::VERSION
 
-  gem.add_runtime_dependency "aws-sdk", [">= 1.5.0"]
+  gem.add_runtime_dependency "aws-sdk", [">= 1.6.6"]
   gem.add_runtime_dependency "log4r"
 end

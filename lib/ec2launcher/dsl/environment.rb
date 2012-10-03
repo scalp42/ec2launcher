@@ -22,6 +22,8 @@ module EC2Launcher
 			dsl_accessor :chef_validation_pem_url
 			dsl_accessor :domain_name
 			dsl_accessor :gem_path
+
+			# @since 1.1.2
 			dsl_accessor :iam_profile
 			dsl_accessor :inherit
 			dsl_accessor :key_name

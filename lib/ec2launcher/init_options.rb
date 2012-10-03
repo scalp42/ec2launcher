@@ -12,8 +12,9 @@ module EC2Launcher
     attr_reader :command
     attr_reader :options
     attr_reader :location
+    attr_reader :hostname
 
-    SUB_COMMANDS = %w{init launch}
+    SUB_COMMANDS = %w{init launch terminate term}
 
     def initialize
       @opts = OptionParser.new do |opts|
@@ -21,8 +22,9 @@ module EC2Launcher
 
   where [COMMAND] is one of:
 
-    init [LOCATION]   Initialize a repository in the specified directory.
-    launch [OPTIONS]  Launch a new instance.
+    init [LOCATION]             Initialize a repository in the specified directory.
+    launch [OPTIONS]            Launch a new instance.
+    terminate [name] [OPTIONS]  Terminates an instance.
 
   and [OPTIONS] include:
 
@@ -172,6 +174,14 @@ module EC2Launcher
           exit 1
         end
         @location = args[0]
+      elsif @command =~ /^term/
+        unless args.length >= 1
+          puts "Missing name of server!"
+          puts
+          help
+          exit 1
+        end
+        @hostname = args[0]
       else
         @opts.parse!(args)
 

@@ -14,6 +14,7 @@ require 'ec2launcher/dsl/config'
 require 'ec2launcher/dsl/application'
 require 'ec2launcher/dsl/environment'
 
+require 'ec2launcher/aws_initializer'
 require 'ec2launcher/backoff_runner'
 require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
@@ -35,6 +36,7 @@ module EC2Launcher
   end
 
   class Launcher
+    include AWSInitializer
     include BackoffRunner
 
     def initialize()
@@ -101,7 +103,7 @@ module EC2Launcher
       ##############################
       # Initialize AWS and create EC2 connection
       ##############################
-      initialize_aws()
+      initialize_aws(@options.access_key, @options.secret)
       @ec2 = AWS::EC2.new
 
       ##############################
@@ -482,26 +484,6 @@ module EC2Launcher
     def get_instance_dns(ec2_instance, public = true)
       dns_name = public ? ec2_instance.public_dns_name : ec2_instance.private_dns_name
       dns_name.nil? ? "n/a" : dns_name
-    end
-
-    # Initializes connections to the AWS SDK
-    #
-    def initialize_aws()
-      aws_access_key = @options.access_key
-      aws_access_key ||= ENV['AWS_ACCESS_KEY']
-
-      aws_secret_access_key = @options.secret
-      aws_secret_access_key ||= ENV['AWS_SECRET_ACCESS_KEY']
-
-      if aws_access_key.nil? || aws_secret_access_key.nil?
-        abort("You MUST either set the AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY environment variables or use the command line options.")
-      end
-
-      @log.info "Initializing AWS connection..."
-      AWS.config({
-        :access_key_id => aws_access_key,
-        :secret_access_key => aws_secret_access_key
-      })
     end
 
     # Launches an EC2 instance.

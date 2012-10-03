@@ -5,7 +5,8 @@
 require 'erb'
 
 require 'ec2launcher'
-require "ec2launcher/init_options"
+require 'ec2launcher/init_options'
+require 'ec2launcher/terminator'
 
 opt_parser = EC2Launcher::InitOptions.new
 opt_parser.parse(ARGV)
@@ -25,9 +26,12 @@ if opt_parser.command == "init"
     File.open("config.rb", 'w') {|f| f.write(new_config_template.result)}
 
     puts "Successfully created #{opt_parser.location}"
+elsif opt_parser.command =~ /^term/
+    terminator = EC2Launcher::Terminator.new
+    terminator.terminate(opt_parser.hostname, opt_parser.options)
 elsif opt_parser.command == "launch"
-  launcher = EC2Launcher::Launcher.new
-  launcher.launch(opt_parser.options)
+    launcher = EC2Launcher::Launcher.new
+    launcher.launch(opt_parser.options)
 else
     opt_parser.help
     exit 1

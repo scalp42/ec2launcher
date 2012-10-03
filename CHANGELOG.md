@@ -1,3 +1,7 @@
+## 1.2.0
+
+* Added support for terminating instances.
+
 ## 1.1.3
 
 * Fixed typo with error handling in BackoffRunner.

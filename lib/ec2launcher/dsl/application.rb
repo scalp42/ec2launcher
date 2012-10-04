@@ -144,9 +144,9 @@ module EC2Launcher
 			# Takes values from the other server type and merges them into this one
 			def merge(other_server)
 				@name = other_server.name
-				@ami_name = other_server.ami_name unless other_server.ami_name.nil?
-				@availability_zone = other_server.availability_zone unless other_server.availability_zone.nil?
-				@basename = other_server.basename unless other_server.basename.nil?
+				@ami_name = other_server.ami_name if other_server.ami_name
+				@availability_zone = other_server.availability_zone if other_server.availability_zone
+				@basename = other_server.basename if other_server.basename
 				
 				unless other_server.block_devices.nil?
 					@block_devices = [] if @block_devices.nil?
@@ -158,9 +158,9 @@ module EC2Launcher
 					other_server.elb.keys.each {|env_name| @elb[env_name] = other_server.elb[env_name] } 
 				end
 				
-				@iam_profile = other_server.iam_profile unless other_server.iam_profile.nil?
-				@instance_type = other_server.instance_type unless other_server.instance_type.nil?
-				@name_suffix = other_server.name_suffix unless other_server.name_suffix.nil?
+				@iam_profile = other_server.iam_profile if other_server.iam_profile
+				@instance_type = other_server.instance_type if other_server.instance_type
+				@name_suffix = other_server.name_suffix if other_server.name_suffix
 				
 				unless other_server.roles.nil?
 					@roles = [] if @roles.nil?
@@ -177,14 +177,14 @@ module EC2Launcher
 					end
 				end
 
-				@use_rvm = other_server.use_rvm unless other_server.use_rvm.nil?
+				@use_rvm = other_server.use_rvm if other_server.use_rvm
 			end
 
 			def roles_for_environment(environment)
 				roles = []
 				roles += @roles unless @roles.nil?
 
-				unless @environment_roles.nil? || @environment_roles[environment].nil?
+				if @environment_roles && @environment_roles[environment]
 					roles += @environment_roles[environment]
 				end
 				roles

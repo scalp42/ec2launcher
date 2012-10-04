@@ -73,12 +73,12 @@ module EC2Launcher
 			def merge(other_env)
 				@name =other_env.name
 
-				@gems += other_env.gems unless other_env.gems.nil?
-				@packages += other_env.packages unless other_env.packages.nil?
-				@roles += other_env.roles unless other_env.roles.nil?
-				@precommand += other_env.precommand unless other_env.precommand.nil?
-				@postcommand += other_env.postcommand unless other_env.postcommand.nil?
-				unless other_env.security_groups.nil?
+				@gems += other_env.gems if other_env.gems
+				@packages += other_env.packages if other_env.packages
+				@roles += other_env.roles if other_env.roles
+				@precommand += other_env.precommand if other_env.precommand
+				@postcommand += other_env.postcommand if other_env.postcommand
+				if other_env.security_groups
 					other_env.security_groups.keys.each do |key|
 						@security_groups[key] = [] if @security_groups[key].nil?
 						@security_groups[key] += other_env.security_groups[key]
@@ -87,23 +87,23 @@ module EC2Launcher
 
 				@aliases = other_env.aliases.nil? ? nil : other_env.aliases
 
-				@ami_name = other_env.ami_name unless other_env.ami_name.nil?
-				@aws_keyfile = other_env.aws_keyfile unless other_env.aws_keyfile.nil?
-				@availability_zone = other_env.availability_zone unless other_env.availability_zone.nil?
-				@chef_path = other_env.chef_path unless other_env.chef_path.nil?
-				@chef_server_url = other_env.chef_server_url unless other_env.chef_server_url.nil?
-				@chef_validation_pem_url = other_env.chef_validation_pem_url unless other_env.chef_validation_pem_url.nil?
-				@domain_name = other_env.domain_name unless other_env.domain_name.nil?
-				@email_notifications = other_env.email_notifications unless other_env.email_notifications.nil?
-				@gem_path = other_env.gem_path unless other_env.gem_path.nil?
-				@iam_profile = other_env.iam_profile unless other_env.iam_profile.nil?
-				@key_name = other_env.key_name unless other_env.key_name.nil?
-				@knife_path = other_env.knife_path unless other_env.knife_path.nil?
-				@route53_zone_id = other_env.route53_zone_id unless other_env.route53_zone_id.nil?
-				@ruby_path = other_env.ruby_path unless other_env.ruby_path.nil?
-				@subnet = other_env.subnet unless other_env.subnet.nil?
-				@short_name = other_env.short_name unless other_env.short_name.nil?
-				@use_rvm = other_env.use_rvm unless other_env.use_rvm.nil?
+				@ami_name = other_env.ami_name if other_env.ami_name
+				@aws_keyfile = other_env.aws_keyfile if other_env.aws_keyfile
+				@availability_zone = other_env.availability_zone if other_env.availability_zone
+				@chef_path = other_env.chef_path if other_env.chef_path
+				@chef_server_url = other_env.chef_server_url if other_env.chef_server_url
+				@chef_validation_pem_url = other_env.chef_validation_pem_url if other_env.chef_validation_pem_url
+				@domain_name = other_env.domain_name if other_env.domain_name
+				@email_notifications = other_env.email_notifications if other_env.email_notifications
+				@gem_path = other_env.gem_path if other_env.gem_path
+				@iam_profile = other_env.iam_profile if other_env.iam_profile
+				@key_name = other_env.key_name if other_env.key_name
+				@knife_path = other_env.knife_path if other_env.knife_path
+				@route53_zone_id = other_env.route53_zone_id if other_env.route53_zone_id
+				@ruby_path = other_env.ruby_path if other_env.ruby_path
+				@subnet = other_env.subnet if other_env.subnet
+				@short_name = other_env.short_name if other_env.short_name
+				@use_rvm = other_env.use_rvm if other_env.use_rvm
 		end
 
 			def load(dsl)

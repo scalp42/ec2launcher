@@ -5,16 +5,16 @@ require 'rubygems'
 require 'aws-sdk'
 require 'log4r'
 
+include Log4r
+
 module EC2Launcher
   class Route53
     #
     # @param [AWS::Route53] route53 Initialized Route53 object
     # @param [String] hosted_zone_id Zone ID
-    def initialize(route53, hosted_zone_id)
-      @log = Logger.new 'route53'
-      log_output = Outputter.stdout
-      log_output.formatter = PatternFormatter.new :pattern => "%m"
-      @log.outputters = log_output
+    # @param [Log4r::Logger]
+    def initialize(route53, hosted_zone_id, logger = nil)
+      @log = logger
 
       @route53 = route53
       @hosted_zone_id = hosted_zone_id

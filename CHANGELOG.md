@@ -1,3 +1,7 @@
+## 1.3.1
+
+* Kludge around log4r issue with Route53.
+
 ## 1.3.0
 
 * Backward imcompatible change: terminating an instance now requires environment name.

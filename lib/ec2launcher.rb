@@ -115,7 +115,7 @@ module EC2Launcher
       @route53_domain_name = nil
       if @environment.route53_zone_id
         aws_route53 = AWS::Route53.new 
-        @route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id)
+        @route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
         @route53_zone_id = @environment.route53_zone_id
         route53_zone = aws_route53.client.get_hosted_zone({:id => @environment.route53_zone_id})
         @route53_domain_name = route53_zone[:hosted_zone][:name].chop

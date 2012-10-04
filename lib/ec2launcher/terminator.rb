@@ -49,7 +49,7 @@ module EC2Launcher
       # Create Route53 connection
       ##############################
       aws_route53 = AWS::Route53.new if @environment.route53_zone_id
-      @route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id)
+      @route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
 
       ##############################
       # Find instance

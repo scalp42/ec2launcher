@@ -175,6 +175,15 @@ module EC2Launcher
         end
         @location = args[0]
       elsif @command =~ /^term/
+        @opts.parse!(args)
+
+        if @options.environ.nil?
+          puts "Missing a required parameter: --environment"
+          puts
+          help
+          exit 1
+        end
+
         unless args.length >= 1
           puts "Missing name of server!"
           puts

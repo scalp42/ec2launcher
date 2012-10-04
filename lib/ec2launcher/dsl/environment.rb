@@ -33,6 +33,9 @@ module EC2Launcher
 			dsl_accessor :subnet
 			dsl_accessor :use_rvm
 
+			# @since 1.3.0
+			dsl_accessor :route53_zone_id
+
 			dsl_array_accessor :aliases
 			dsl_array_accessor :gems
 			dsl_array_accessor :packages
@@ -54,6 +57,7 @@ module EC2Launcher
 				@precommand = []
 				@postcommand = []
 				@roles = []
+				@route53_zone_id = nil
 				@security_groups = {}
 
 				@use_rvm = true
@@ -95,6 +99,7 @@ module EC2Launcher
 				@iam_profile = other_env.iam_profile unless other_env.iam_profile.nil?
 				@key_name = other_env.key_name unless other_env.key_name.nil?
 				@knife_path = other_env.knife_path unless other_env.knife_path.nil?
+				@route53_zone_id = other_env.route53_zone_id unless other_env.route53_zone_id.nil?
 				@ruby_path = other_env.ruby_path unless other_env.ruby_path.nil?
 				@subnet = other_env.subnet unless other_env.subnet.nil?
 				@short_name = other_env.short_name unless other_env.short_name.nil?

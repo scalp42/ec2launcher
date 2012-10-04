@@ -1,3 +1,10 @@
+## 1.3.0
+
+* Backward imcompatible change: terminating an instance now requires environment name.
+* Added support for automatically adding A records in Route53 for new instances.
+* Added support for automatically deleting A records from Route53 when terminating an instance.
+* Added new "route53_zone_id" config option to environments to support Route53 integration.
+
 ## 1.2.0
 
 * Added support for terminating instances.

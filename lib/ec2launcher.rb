@@ -19,6 +19,7 @@ require 'ec2launcher/backoff_runner'
 require 'ec2launcher/instance_paths_config'
 require 'ec2launcher/block_device_builder'
 require 'ec2launcher/hostname_generator'
+require 'ec2launcher/route53'
 
 require 'ec2launcher/config_wrapper'
 
@@ -105,6 +106,20 @@ module EC2Launcher
       ##############################
       initialize_aws(@options.access_key, @options.secret)
       @ec2 = AWS::EC2.new
+
+      ##############################
+      # Create Route53 connection
+      ##############################
+      @route53 = nil
+      @route53_zone_id = nil
+      @route53_domain_name = nil
+      if @environment.route53_zone_id
+        aws_route53 = AWS::Route53.new 
+        @route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id)
+        @route53_zone_id = @environment.route53_zone_id
+        route53_zone = aws_route53.client.get_hosted_zone({:id => @environment.route53_zone_id})
+        @route53_domain_name = route53_zone[:hosted_zone][:name].chop
+      end
 
       ##############################
       # SUBNET
@@ -204,6 +219,14 @@ module EC2Launcher
       ami = find_ami(instance_architecture, instance_virtualization, ami_name_match, @options.ami_id)
 
       ##############################
+      # DOMAIN NAME
+      ##############################
+
+      # Note: Route53 domain names override domain names specified in the environments
+      @domain_name = @route53_domain_name
+      @domain_name ||= @environment.domain_name
+
+      ##############################
       # HOSTNAME
       ##############################
       hostname_generator = EC2Launcher::HostnameGenerator.new(@ec2, @environment, @application)
@@ -212,14 +235,14 @@ module EC2Launcher
       if @options.count > 1
         1.upto(@options.count).each do |i|
           short_hostname = hostname_generator.generate_hostname()
-          long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
+          long_hostname = hostname_generator.generate_long_name(short_hostname, @domain_name)
           short_hostnames << short_hostname
           fqdn_names << long_hostname
         end
       else
         if @options.hostname.nil?
           short_hostname = hostname_generator.generate_hostname()
-          long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
+          long_hostname = hostname_generator.generate_long_name(short_hostname, @domain_name)
         else
           long_hostname = @options.hostname
           short_hostname = hostname_generator.generate_short_name(long_hostname, @environment.domain_name)
@@ -285,7 +308,7 @@ module EC2Launcher
 
       ##############################
       @log.info
-      @log.info "Availability zone: #{availability_zone}"
+      @log.info "Availability zone   : #{availability_zone}"
       @log.info "Key name            : #{key_name}"
       @log.info "Security groups     : " + security_groups.collect {|name| "#{name} (#{sg_map[name].security_group_id})"}.join(", ")
       @log.info "IAM profile         : #{iam_profile}" if iam_profile
@@ -294,6 +317,7 @@ module EC2Launcher
       @log.info "AMI name            : #{ami.ami_name}"
       @log.info "AMI id              : #{ami.ami_id}"
       @log.info "ELB                 : #{elb_name}" if elb_name
+      @log.info "Route53 Zone        : #{@route53_domain_name}" if @route53_domain_name
       @log.info "Chef PEM            : #{chef_validation_pem_url}"
       @log.info "AWS key file        : #{aws_keyfile}"
       @log.info "Roles               : #{roles.join(', ')}"
@@ -348,7 +372,7 @@ module EC2Launcher
         block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
         user_data = build_launch_command(fqdn_names[i], short_hostnames[i], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
 
-        instance = launch_instance(fqdn_names[i], ami.ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+        instance = launch_instance(fqdn_names[i], short_hostnames[i], ami.ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
         instances << instance
 
         public_dns_name = get_instance_dns(instance, true)
@@ -501,7 +525,7 @@ module EC2Launcher
     # @param [Hash<String,Hash<String, String>>, nil] block_device_tags mapping of device names to hash objects with tags for the new EBS block devices.
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
-    def launch_instance(hostname, ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
+    def launch_instance(hostname, short_hostname, ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
       @log.warn "Launching instance... #{hostname}"
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
@@ -544,6 +568,7 @@ module EC2Launcher
       # Tag instance
       @log.info "Tagging instance..."
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: name, value: #{hostname}") { new_instance.add_tag("Name", :value => hostname) }
+      run_with_backoff(30, 1, "tag #{new_instance.id}, tag: short_name, value: #{short_hostname}") { new_instance.add_tag("short_name", :value => short_hostname) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: environment, value: #{@environment.name}") { new_instance.add_tag("environment", :value => @environment.name) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: application, value: #{@application.name}") { new_instance.add_tag("application", :value => @application.name) }
 
@@ -561,6 +586,13 @@ module EC2Launcher
           end
         end
         AWS.stop_memoizing
+      end
+
+      ##############################
+      # Add to Route53
+      if @route53
+        @log.info "Adding A record to Route53: #{hostname} => #{new_instance.private_ip_address}"
+        @route53.create_record(hostname, new_instance.private_ip_address, 'A')
       end
 
       new_instance

@@ -20,7 +20,7 @@ module EC2Launcher
       end
       
       begin
-        yield
+        block.call
       rescue AWS::EC2::Errors::RequestLimitExceeded
         puts "AWS::EC2::Errors::RequestLimitExceeded ... retrying #{message} in #{sleep_time} seconds"
         sleep sleep_time

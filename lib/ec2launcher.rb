@@ -189,8 +189,8 @@ module EC2Launcher
       ##############################
       # IAM PROFILE
       ##############################
-      iam_profile = @environment.iam_profile
-      iam_profile ||= @application.iam_profile
+      iam_profile = @application.iam_profile_for_environment(@environment.name)
+      iam_profile ||= @environment.iam_profile
 
       ##############################
       # INSTANCE TYPE

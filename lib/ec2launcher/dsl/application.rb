@@ -41,7 +41,6 @@ module EC2Launcher
 			dsl_accessor :availability_zone
 			dsl_accessor :basename
 			dsl_accessor :inherit
-			dsl_accessor :iam_profile
 			dsl_accessor :instance_type
 			dsl_accessor :name_suffix
 			dsl_accessor :subnet
@@ -61,8 +60,9 @@ module EC2Launcher
 
 			def initialize(name)
 				@name = name
+				
 				@email_notifications = nil
-
+				@iam_profile = Hash.new
 				@use_rvm = true
 			end
 
@@ -139,6 +139,31 @@ module EC2Launcher
 
 					self
 				end
+			end
+
+			# IAM profile role name to use for new instances.
+			#
+			# Expects one param in the form of either:
+			#   * A string containing the name of the IAM profile
+			#   * A Hash mapping environment names (as strings) to IAM profile names (as strings)
+			def iam_profile(*data)
+				if data.empty?
+					@iam_profile
+				else
+					if data[0].kind_of? Hash
+						@iam_profile = data[0]
+					else
+						@iam_profile["default"] = data[0]
+					end
+				end
+			end
+
+			# Retrieves the IAM profile for a given environment. Or
+			# returns the default profile name.
+			def iam_profile_for_environment(environment)
+				iam_profile = @iam_profile[environment]
+				iam_profile ||= @iam_profile["default"]
+				iam_profile
 			end
 
 			# Takes values from the other server type and merges them into this one

@@ -1,3 +1,7 @@
+## 1.3.2
+
+* Added support for specifying per-environment IAM profiles in Applications.
+
 ## 1.3.1
 
 * Kludge around log4r issue with Route53.

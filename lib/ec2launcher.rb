@@ -734,7 +734,7 @@ EOF
       command_str = ""
       unless commands.nil? || commands.empty?
         processed_commands = commands.collect {|cmd| substitute_command_variables(cmd) }
-        command_str = "\n" + processed_commands.join("\n")
+        command_str = "\n" + processed_commands.join("\n") + "\n"
       end
       command_str
     end

@@ -79,8 +79,8 @@ module EC2Launcher
           end
         end
       end
+      @log.info("Route53 '#{record_type}' record for #{hostname} not found.") unless record_found
     end
-    @log.info("Route53 '#{record_type}' record for #{hostname} not found.") unless record_found
 
     # Deletes a DNS record from Route53.
     #

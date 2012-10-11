@@ -1,3 +1,7 @@
+## 1.3.5
+
+* Fixed typo.
+
 ## 1.3.4
 
 * Additional error checking when deleting records from Route53.

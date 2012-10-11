@@ -66,11 +66,13 @@ module EC2Launcher
       end # memoize
 
       if instance
+        private_ip_address = instance.private_ip_address
+        
         @log.info("Terminating instance: #{server_name} [#{instance.instance_id}]")
         instance.terminate
 
         if @route53
-          @log.info("Deleting A record from Route53: #{server_name} => #{instance.private_ip_address}")
+          @log.info("Deleting A record from Route53: #{server_name} => #{private_ip_address}")
           @route53.delete_record_by_name(server_name, 'A')
         end
 

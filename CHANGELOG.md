@@ -1,3 +1,8 @@
+## 1.3.4
+
+* Additional error checking when deleting records from Route53.
+* More Route53 logging.
+
 ## 1.3.3
 
 * Added an extra newline after pre-commands in user-data.

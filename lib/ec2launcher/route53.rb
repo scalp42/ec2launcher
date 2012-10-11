@@ -68,13 +68,19 @@ module EC2Launcher
         :start_record_type => record_type,
         :max_items => 1
       })
+
+      record_found = false
       if response && response.data
         if response.data[:resource_record_sets] && response.data[:resource_record_sets].size > 0
           record = response.data[:resource_record_sets][0]
-          delete_record(record[:name], record[:type], record[:ttl], record[:resource_records][0][:value], log_errors)
+          if record[:name] == hostname && record[:type] == record_type
+            record_found = true
+            delete_record(record[:name], record[:type], record[:ttl], record[:resource_records][0][:value], log_errors)
+          end
         end
       end
     end
+    @log.info("Route53 '#{record_type}' record for #{hostname} not found.") unless record_found
 
     # Deletes a DNS record from Route53.
     #

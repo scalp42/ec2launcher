@@ -73,9 +73,11 @@ module EC2Launcher
       if response && response.data
         if response.data[:resource_record_sets] && response.data[:resource_record_sets].size > 0
           record = response.data[:resource_record_sets][0]
-          if record[:name] == hostname && record[:type] == record_type
+          if (record[:name] == hostname || record[:name] == "#{hostname}.") && record[:type] == record_type
             record_found = true
             delete_record(record[:name], record[:type], record[:ttl], record[:resource_records][0][:value], log_errors)
+          else
+            puts @log.info("Whoops. Route53 found '#{record[:type]}' record for #{record[:name]}")
           end
         end
       end

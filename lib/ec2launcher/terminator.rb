@@ -68,8 +68,9 @@ module EC2Launcher
       if instance
         private_ip_address = instance.private_ip_address
         
-        @log.info("Terminating instance: #{server_name} [#{instance.instance_id}]")
-        instance.terminate
+        run_with_backoff(30, 1, "terminating instance: #{server_name} [#{instance.instance_id}]") do
+          instance.terminate
+        end
 
         if @route53
           @log.info("Deleting A record from Route53: #{server_name} => #{private_ip_address}")

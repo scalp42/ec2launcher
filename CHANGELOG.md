@@ -1,3 +1,7 @@
+## 1.3.7
+
+* Added exponential back off to termination process.
+
 ## 1.3.6
 
 * Fixed error checking when deleting records from Route53 to be a little less aggressive.

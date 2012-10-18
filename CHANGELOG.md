@@ -1,3 +1,7 @@
+## 1.3.8
+
+* Make terminator code more threadsafe.
+
 ## 1.3.7
 
 * Added exponential back off to termination process.

@@ -14,7 +14,7 @@ module EC2Launcher
     include AWSInitializer
     include BackoffRunner
 
-    def initialize()
+    def initialize(config_directory, environment_name)
       @log = Logger.new 'ec2launcher'
       log_output = Outputter.stdout
       log_output.formatter = PatternFormatter.new :pattern => "%m"
@@ -23,7 +23,7 @@ module EC2Launcher
       ##############################
       # Load configuration data
       ##############################
-      config_wrapper = ConfigWrapper.new(options.directory)
+      config_wrapper = ConfigWrapper.new(config_directory)
 
       @config = config_wrapper.config
       @environments = config_wrapper.environments
@@ -31,11 +31,11 @@ module EC2Launcher
       ##############################
       # ENVIRONMENT
       ##############################
-      unless @environments.has_key? options.environ
-        @log.fatal "Environment not found: #{options.environ}"
+      unless @environments.has_key? environment_name
+        @log.fatal "Environment not found: #{environment_name}"
         exit 2
       end
-      @environment = @environments[options.environ]
+      @environment = @environments[environment_name]
     end
 
     # Terminates a given server instance.

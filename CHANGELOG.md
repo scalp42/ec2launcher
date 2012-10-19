@@ -1,3 +1,7 @@
+## 1.3.9
+
+* More cleanup to terminator code.
+
 ## 1.3.8
 
 * Make terminator code more threadsafe.

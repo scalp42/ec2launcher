@@ -24,7 +24,11 @@ module EC2Launcher
       @block_device_mappings = {}
       @block_device_tags = {}
 
-      @log = Logger['ec2launcher']
+      begin
+        @log = Logger['ec2launcher']
+      rescue
+        @log = Logger.new 'ec2launcher'
+      end
     end
 
     # Generates the mappings for ephemeral and ebs volumes.
@@ -173,6 +177,7 @@ module EC2Launcher
       AWS.stop_memoizing
     end
 
+    public
     # Retrieves the latest set of completed snapshots for a RAID array of EBS volumes.
     #
     # Volumes must have the following tags:

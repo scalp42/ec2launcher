@@ -1,3 +1,8 @@
+## 1.3.10
+
+* Made additional methods in BlockDeviceBuilder public for reuse elsewhere.
+* Fixed small bug in BlockDeviceBuilder when unable to retrieve existing Logger.
+
 ## 1.3.9
 
 * More cleanup to terminator code.

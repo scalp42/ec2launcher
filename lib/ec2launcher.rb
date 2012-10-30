@@ -164,11 +164,8 @@ module EC2Launcher
       sg_map = { }
       AWS.start_memoizing
       @ec2.security_groups.each do |sg|
-        if ec2_subnet.nil?
-          next unless sg.vpc_id.nil?
-        else
-          next unless ec2_subnet.vpc_id == sg.vpc_id
-        end
+        next if ec2_subnet.nil? && sg.vpc_id
+        next if ec2_subnet && ec2_subnet.vpc_id != sg.vpc_id
         sg_map[sg.name] = sg
       end
       AWS.stop_memoizing
@@ -178,6 +175,7 @@ module EC2Launcher
       missing_security_groups = []
       security_groups.each do |sg_name|
         missing_security_groups << sg_name unless sg_map.has_key?(sg_name)
+        puts sg_name
         security_group_ids << sg_map[sg_name].security_group_id
       end
 

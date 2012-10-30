@@ -16,4 +16,7 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency "aws-sdk", [">= 1.6.6"]
   gem.add_runtime_dependency "log4r"
+
+  gem.add_development_dependency "minitest"
+  gem.add_development_dependency "rake"
 end

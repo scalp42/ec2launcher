@@ -1,4 +1,5 @@
-# ec2launcher
+# EC2Launcher
+[![Code Climate](https://codeclimate.com/badge.png)](https://codeclimate.com/github/StudyBlue/ec2launcher)
 
 A tool to help launch Amazon EC2 instances.
 
@@ -14,3 +15,7 @@ All contributions are welcome: ideas, patches, documentation, bug reports, compl
 # Support
 
 [ec2launcher Google Groups](http://groups.google.com/group/ec2launcher-user)
+
+# Authors and Contributors
+
+* Sean Laurent

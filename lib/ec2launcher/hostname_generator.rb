@@ -4,9 +4,13 @@
 require 'rubygems'
 require 'aws-sdk'
 
+require 'ec2launcher/backoff_runner'
+
 module EC2Launcher
   # Helper class to generate sequential, numbered host names
   class HostnameGenerator
+    include BackoffRunner
+
     # 
     # @param [AWS::EC2] ec2 EC2 object used to query for existing instances
     # @param [EC2Launcher::Environment] environment Environment to use for generating host names
@@ -70,7 +74,10 @@ module EC2Launcher
     def load_instances(prefix, suffix)
       @server_name_cache = []
       AWS.memoize do
-        server_instances = @ec2.instances.filter("tag:Name", "#{prefix}*#{suffix}*")
+        server_instances = nil
+        run_with_backoff(60, 1, "searching for instances") do
+          server_instances = @ec2.instances.filter("tag:Name", "#{prefix}*#{suffix}*")
+        end
         server_instances.each do |i|
           next if i.status == :terminated
           @server_name_cache << i.tags[:Name]

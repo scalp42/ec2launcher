@@ -2,6 +2,7 @@
 # Copyright (c) 2012 Sean Laurent
 #
 require 'ec2launcher/defaults'
+require 'ec2launcher/backoff_runner'
 require 'log4r'
 
 include Log4r
@@ -10,6 +11,8 @@ module EC2Launcher
   # Helper class to build EC2 block device definitions.
   #
   class BlockDeviceBuilder
+    include BackoffRunner
+
     attr_reader :block_device_mappings
     attr_reader :block_device_tags
 
@@ -187,9 +190,16 @@ module EC2Launcher
     def build_snapshot_clone_list(purpose, snapshots)
       snapshot_name_regex = /#{purpose} raid.*/
       host_snapshots = []
-      result.each do |s|
-        next if snapshot_name_regex.match(s.tags["volumeName"]).nil?
-        host_snapshots << s if s.status == :completed
+      snapshots.each do |s|
+        name_no_match = false
+        run_with_backoff(60, 1, "searching for snapshots") do
+          name_no_match = snapshot_name_regex.match(s.tags["volumeName"]).nil?
+        end
+        next if name_no_match
+
+        run_with_backoff(60, 1, "searching for snapshots") do
+          host_snapshots << s if s.status == :completed
+        end
       end
       host_snapshots
     end
@@ -202,7 +212,7 @@ module EC2Launcher
     def bucket_snapshots_by_volume_number(snapshots)
       snapshot_buckets = { }
       volume_number_regex = /raid \((\d)\)$/
-      host_snapshots.each do |snapshot|
+      snapshots.each do |snapshot|
         next if snapshot.tags["time"].nil?
 
         volume_name = snapshot.tags["volumeName"]
@@ -285,7 +295,7 @@ module EC2Launcher
       # We need to find the most recent backup time that all snapshots have in common.
       most_recent_date = get_most_recent_common_snapshot_time(snapshot_buckets)
 
-      @log.info "Most recent snapshot: #{most_recent_dates[0]}"
+      @log.info "Most recent snapshot: #{most_recent_date}"
 
       # Find snapshots for the specified date
       snapshot_mapping = { }

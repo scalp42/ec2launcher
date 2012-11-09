@@ -1,3 +1,8 @@
+## 1.3.12
+
+* Use run_with_backoff when searching for AMI and existing hosts.
+* Fixed bug introduced by BlockDeviceBuilder refactoring.
+
 ## 1.3.11
 
 * Fixed logging bug in BlockDeviceBuilder (again).

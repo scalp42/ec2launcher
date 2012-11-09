@@ -214,7 +214,10 @@ module EC2Launcher
       ##############################
       ami_name_match = @application.ami_name
       ami_name_match ||= @environment.ami_name
-      ami = find_ami(instance_architecture, instance_virtualization, ami_name_match, @options.ami_id)
+      ami = nil
+      run_with_backoff(60, 1, "searching for ami") do
+        ami = find_ami(instance_architecture, instance_virtualization, ami_name_match, @options.ami_id)
+      end
 
       ##############################
       # DOMAIN NAME

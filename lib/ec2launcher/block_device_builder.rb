@@ -178,6 +178,77 @@ module EC2Launcher
       AWS.stop_memoizing
     end
 
+    private
+    # @param [String] purpose purpose of RAID array, which is stored in the `purpose` tag for snapshots/volumes
+    #        and is part of the snapshot name.
+    # @param [AWS::EC2::SnapshotCollection] snapshots collection of snapshots to examine
+    #
+    # @return [Array<AWS::EC2::Snapshot>] list of matching snapshots
+    def build_snapshot_clone_list(purpose, snapshots)
+      snapshot_name_regex = /#{purpose} raid.*/
+      host_snapshots = []
+      result.each do |s|
+        next if snapshot_name_regex.match(s.tags["volumeName"]).nil?
+        host_snapshots << s if s.status == :completed
+      end
+      host_snapshots
+    end
+
+    private
+    # Creates a mapping of volume numbers to snapshots.
+    #
+    # @param [Array<AWS::EC2::Snapshot>] snapshots list of matching snapshots
+    # @result [Hash<String, AWS::EC2::Snapshot>] map of volume numbers as strings  ("1", "2", etc.) to snapshots
+    def bucket_snapshots_by_volume_number(snapshots)
+      snapshot_buckets = { }
+      volume_number_regex = /raid \((\d)\)$/
+      host_snapshots.each do |snapshot|
+        next if snapshot.tags["time"].nil?
+
+        volume_name = snapshot.tags["volumeName"]
+
+        match_info = volume_number_regex.match(volume_name)
+        next if match_info.nil?
+
+        matches = match_info.captures
+        next if matches.length != 1
+
+        raid_number = matches[0]
+
+        snapshot_buckets[raid_number] = [] if snapshot_buckets[raid_number].nil?
+        snapshot_buckets[raid_number] << snapshot
+      end
+      snapshot_buckets
+    end
+
+    private
+    # Find the most recent backup time that all snapshots have in common.
+    #
+    # @param [Hash<String, AWS::EC2::Snapshot>] snapshot_buckets map of volume numbers as strings  ("1", "2", etc.) to snapshots
+    def get_most_recent_common_snapshot_time(snapshot_buckets)
+      # We need to find the most recent backup time that all snapshots have in common.
+      #
+      # For example, we may have the following snapshots for "raid (1)":
+      #   volumeName => db1.dev db raid (1), time => 11-06-15 10:00
+      #   volumeName => db1.dev db raid (1), time => 11-06-15 09:00
+      #   volumeName => db1.dev db raid (1), time => 11-06-14 09:00
+      # And the following snapshots for "raid (2)":
+      #   volumeName => db1.dev db raid (1), time => 11-06-15 09:00
+      #   volumeName => db1.dev db raid (1), time => 11-06-14 09:00
+      #
+      # In this example, the latest snapshot from "raid (1)" is dated "11-06-15 10:00", but "raid (2)" does not have
+      # a matching snapshot (because it hasn't completed yet). Instead, we should use the "11-06-15 09:00" snapshots.
+      #
+      # We find the most recent date from each bucket and then take the earliest one.
+      most_recent_dates = []
+      snapshot_buckets.keys().each do |key|
+        snapshot = snapshot_buckets[key][0]
+        most_recent_dates << snapshot.tags["time"].to_s
+      end
+      most_recent_dates.sort!
+      most_recent_dates[0]
+    end
+
     public
     # Retrieves the latest set of completed snapshots for a RAID array of EBS volumes.
     #
@@ -199,31 +270,10 @@ module EC2Launcher
 
       @log.info "Building list of snapshots to clone (#{purpose}) for '#{hostname}'..."
       snapshot_name_regex = /#{purpose} raid.*/
-      host_snapshots = []
-      result.each do |s|
-        next if snapshot_name_regex.match(s.tags["volumeName"]).nil?
-        host_snapshots << s if s.status == :completed
-      end
+      host_snapshots = build_snapshot_clone_list(purpose, result)
 
       # Bucket the snapshots based on volume number e.g. "raid (1)" vs "raid (2)"
-      snapshot_buckets = { }
-      volume_number_regex = /raid \((\d)\)$/
-      host_snapshots.each do |snapshot|
-        next if snapshot.tags["time"].nil?
-
-        volume_name = snapshot.tags["volumeName"]
-
-        match_info = volume_number_regex.match(volume_name)
-        next if match_info.nil?
-
-        matches = match_info.captures
-        next if matches.length != 1
-
-        raid_number = matches[0]
-
-        snapshot_buckets[raid_number] = [] if snapshot_buckets[raid_number].nil?
-        snapshot_buckets[raid_number] << snapshot
-      end
+      snapshot_buckets = bucket_snapshots_by_volume_number(host_snapshots)
 
       # Sort the snapshots in each bucket by time
       snapshot_buckets.keys.each do |key|
@@ -233,34 +283,17 @@ module EC2Launcher
       end
 
       # We need to find the most recent backup time that all snapshots have in common.
-      #
-      # For example, we may have the following snapshots for "raid (1)":
-      #   volumeName => db1.dev db raid (1), time => 11-06-15 10:00
-      #   volumeName => db1.dev db raid (1), time => 11-06-15 09:00
-      #   volumeName => db1.dev db raid (1), time => 11-06-14 09:00
-      # And the following snapshots for "raid (2)":
-      #   volumeName => db1.dev db raid (1), time => 11-06-15 09:00
-      #   volumeName => db1.dev db raid (1), time => 11-06-14 09:00
-      #
-      # In this example, the latest snapshot from "raid (1)" is dated "11-06-15 10:00", but "raid (2)" does not have
-      # a matching snapshot (because it hasn't completed yet). Instead, we should use the "11-06-15 09:00" snapshots.
-      #
-      # We find the most recent date from each bucket and then take the earliest one.
-      most_recent_dates = []
-      snapshot_buckets.keys().each do |key|
-        snapshot = snapshot_buckets[key][0]
-        most_recent_dates << snapshot.tags["time"].to_s
-      end
-      most_recent_dates.sort!
+      most_recent_date = get_most_recent_common_snapshot_time(snapshot_buckets)
 
       @log.info "Most recent snapshot: #{most_recent_dates[0]}"
 
+      # Find snapshots for the specified date
       snapshot_mapping = { }
       AWS.memoize do
         snapshot_buckets.keys.each do |index|
           found = false
           snapshot_buckets[index].each do |snapshot|
-            if snapshot.tags["time"] == most_recent_dates[0]
+            if snapshot.tags["time"] == most_recent_date
               snapshot_mapping[index] = snapshot
               found = true
               break

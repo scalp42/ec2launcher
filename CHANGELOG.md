@@ -1,3 +1,7 @@
+## 1.3.11
+
+* Fixed logging bug in BlockDeviceBuilder (again).
+
 ## 1.3.10
 
 * Made additional methods in BlockDeviceBuilder public for reuse elsewhere.

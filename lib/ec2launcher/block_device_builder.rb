@@ -25,10 +25,11 @@ module EC2Launcher
       @block_device_tags = {}
 
       begin
-        @log = Logger['ec2launcher']
+        @log = Log4r::Logger['ec2launcher']
       rescue
-        @log = Logger.new 'ec2launcher'
       end
+
+      @log ||= Log4r::Logger.new 'ec2launcher'
     end
 
     # Generates the mappings for ephemeral and ebs volumes.

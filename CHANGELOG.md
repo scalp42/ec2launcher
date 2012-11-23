@@ -1,3 +1,7 @@
+## 1.4.1
+
+* Fixed typo.
+
 ## 1.4.0
 
 * When terminating an instance, delete all EBS snapshots for volumes attached to that instance.

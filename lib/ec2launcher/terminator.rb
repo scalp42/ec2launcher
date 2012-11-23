@@ -103,14 +103,14 @@ module EC2Launcher
       volumes = instance.block_device_mappings.values
 
       # Iterate over over volumes to find snapshots
-      @log.info("  Searching for snapshots...")
+      @log.info("Searching for snapshots...")
       snapshots = []
       volumes.each do |vol|
-        volume_snaps = ec2.snapshots.filter("volume-id", vol.id)
-        snapshots += volume_snaps
+        volume_snaps = ec2.snapshots.filter("volume-id", vol.volume.id)
+        volume_snaps.each {|volume_snapshot| snaphots << volume_snapshot }
       end
 
-      @log.info("  Deleting #{snapshots.size} snapshots...")
+      @log.info("Deleting #{snapshots.size} snapshots...")
       snapshots.each {|snap| snap.delete }
     end
   end

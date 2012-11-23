@@ -74,6 +74,13 @@ module EC2Launcher
         end
 
         opts.separator ""
+        opts.separator "Termination options:"
+
+        opts.on("--[no-]snapshot-removal", "Remove EBS snapshots. Defaults to TRUE.") do |removal|
+          @options.snapshot_removal = removal
+        end
+
+        opts.separator ""
         opts.separator "Overrides:"
 
         opts.on("-d", "--directory DIRECTORY", String, "Location of configuration directory. Defaults to current directory.") do |directory|
@@ -161,6 +168,8 @@ module EC2Launcher
       @options.zone = nil
       @options.instance_type = nil
       @options.volume_size = nil
+
+      @options.snapshot_removal = true
 
       @options.verbosity = :normal
 

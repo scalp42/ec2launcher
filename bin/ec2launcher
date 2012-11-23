@@ -28,7 +28,7 @@ if opt_parser.command == "init"
     puts "Successfully created #{opt_parser.location}"
 elsif opt_parser.command =~ /^term/
     terminator = EC2Launcher::Terminator.new(opt_parser.options.directory, opt_parser.options.environ)
-    terminator.terminate(opt_parser.hostname, opt_parser.options.access_key, opt_parser.options.secret_key)
+    terminator.terminate(opt_parser.hostname, opt_parser.options.access_key, opt_parser.options.secret_key, opt_parser.snapshot_removal)
 elsif opt_parser.command == "launch"
     launcher = EC2Launcher::Launcher.new
     launcher.launch(opt_parser.options)

@@ -1,3 +1,7 @@
+## 1.4.0
+
+* When terminating an instance, delete all EBS snapshots for volumes attached to that instance.
+
 ## 1.3.12
 
 * Use run_with_backoff when searching for AMI and existing hosts.

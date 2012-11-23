@@ -43,7 +43,8 @@ module EC2Launcher
     # @param[String] server_name Name of the server instance
     # @param[String] access_key Amazon IAM access key
     # @param[String] secret Amazon IAM secret key
-    def terminate(server_name, access_key, secret)
+    # @param[Boolean] snapshot_removal Remove EBS snapshots for EBS volumes attached to the instance.
+    def terminate(server_name, access_key, secret, snapshot_removal = true)
       ##############################
       # Initialize AWS and create EC2 connection
       ##############################
@@ -71,6 +72,11 @@ module EC2Launcher
       end # memoize
 
       if instance
+        # Remove EBS snapshots
+        AWS.memoize do
+          remove_snapshots(ec2, instance) if snapshot_removal
+        end
+
         private_ip_address = instance.private_ip_address
         
         run_with_backoff(30, 1, "terminating instance: #{server_name} [#{instance.instance_id}]") do
@@ -90,6 +96,22 @@ module EC2Launcher
       else
         @log.error("Unable to find instance: #{server_name}")
       end
+    end
+
+    def remove_snapshots(ec2, instance)
+      # Find EBS volumes for instance
+      volumes = instance.block_device_mappings.values
+
+      # Iterate over over volumes to find snapshots
+      @log.info("  Searching for snapshots...")
+      snapshots = []
+      volumes.each do |vol|
+        volume_snaps = ec2.snapshots.filter("volume-id", vol.id)
+        snapshots += volume_snaps
+      end
+
+      @log.info("  Deleting #{snapshots.size} snapshots...")
+      snapshots.each {|snap| snap.delete }
     end
   end
 end

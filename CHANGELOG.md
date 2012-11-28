@@ -1,3 +1,7 @@
+## 1.4.2
+
+* Remove requirement to provide environment name when terminating an instance.
+
 ## 1.4.1
 
 * Fixed typo.

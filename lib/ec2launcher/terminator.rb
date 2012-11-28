@@ -14,7 +14,7 @@ module EC2Launcher
     include AWSInitializer
     include BackoffRunner
 
-    def initialize(config_directory, environment_name)
+    def initialize(config_directory)
       @log = Logger.new 'ec2launcher'
       log_output = Outputter.stdout
       log_output.formatter = PatternFormatter.new :pattern => "%m"
@@ -27,15 +27,6 @@ module EC2Launcher
 
       @config = config_wrapper.config
       @environments = config_wrapper.environments
-
-      ##############################
-      # ENVIRONMENT
-      ##############################
-      unless @environments.has_key? environment_name
-        @log.fatal "Environment not found: #{environment_name}"
-        exit 2
-      end
-      @environment = @environments[environment_name]
     end
 
     # Terminates a given server instance.
@@ -50,12 +41,6 @@ module EC2Launcher
       ##############################
       initialize_aws(access_key, secret)
       ec2 = AWS::EC2.new
-      
-      ##############################
-      # Create Route53 connection
-      ##############################
-      aws_route53 = AWS::Route53.new if @environment.route53_zone_id
-      route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
 
       ##############################
       # Find instance
@@ -72,6 +57,27 @@ module EC2Launcher
       end # memoize
 
       if instance
+        environment_name = nil
+        AWS.memoize do
+          environment_name = instance.tags["environment"].strip
+        end
+
+        ##############################
+        # ENVIRONMENT
+        ##############################
+        unless @environments.has_key? environment_name
+          @log.fatal "Environment not found: '#{environment_name}'"
+          exit 2
+        end
+        @environment = @environments[environment_name]
+
+        ##############################
+        # Create Route53 connection
+        ##############################
+        aws_route53 = nil
+        aws_route53 = AWS::Route53.new if @environment.route53_zone_id
+        route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
+
         # Remove EBS snapshots
         AWS.memoize do
           remove_snapshots(ec2, instance) if snapshot_removal

@@ -14,21 +14,55 @@ module EC2Launcher
     attr_reader :location
     attr_reader :hostname
 
-    SUB_COMMANDS = %w{init launch terminate term}
+    SUB_COMMANDS = %w{help init launch terminate}
 
-    def initialize
-      @opts = OptionParser.new do |opts|
-        opts.banner = "Usage: ec2launcher [COMMAND]
+    def global_options
+      OptionParser.new do |opts|
+        opts.banner = <<EOH
+SYNOPSIS
+  ec2launcher [global options] command [command options] [command arguments]
 
-  where [COMMAND] is one of:
+COMMANDS
+  init        - Initialize a new environment/application repository.
+  launch      - Launch a new instance.
+  terminate   - Terminates an instance.
 
-    init [LOCATION]             Initialize a repository in the specified directory.
-    launch [OPTIONS]            Launch a new instance.
-    terminate [name] [OPTIONS]  Terminates an instance.
+EOH
 
-  and [OPTIONS] include:
+        opts.separator "Global options:"
 
-  "
+        opts.on("--access-key KEY", String, "Amazon access key. Overrides AWS_ACCESS_KEY environment variable.") do |access_key|
+          @options.access_key = access_key
+        end
+
+        opts.on("--secret SECRET", String, "Amazon secret access key. Overrides AWS_SECRET_ACCESS_KEY environment variable.") do |secret|
+          @options.secret = secret
+        end
+
+        opts.on("-d", "--directory DIRECTORY", String, "Location of configuration directory. Defaults to current directory.") do |directory|
+          @options.directory = directory
+        end
+
+        opts.on_tail("-q", "--quiet", "Display as little information as possible.") do
+          @options.verbosity = :quiet
+        end
+
+        opts.on_tail("-v", "--verbose", "Display as much information as possible.") do
+          @options.verbosity = :verbose
+        end
+
+        # No argument, shows at tail.  This will print an options summary.
+        # Try it and see!
+        opts.on_tail("-?", "--help", "Show this message") do
+          puts opts
+          exit
+        end    
+      end
+    end
+
+    def launch_options
+      OptionParser.new do |opts|
+        opts.banner = ""
         opts.separator "Query options:"
 
         opts.on("-l", "--list", "Show environments and applications.") do
@@ -44,7 +78,7 @@ module EC2Launcher
         end
 
         opts.separator ""
-        opts.separator "Required Launch options:"
+        opts.separator "Required launch options:"
 
         opts.on("-e", "--environment ENV", "The environment for the server.") do |env|
           @options.environ = env
@@ -74,18 +108,7 @@ module EC2Launcher
         end
 
         opts.separator ""
-        opts.separator "Termination options:"
-
-        opts.on("--[no-]snapshot-removal", "Remove EBS snapshots. Defaults to TRUE.") do |removal|
-          @options.snapshot_removal = removal
-        end
-
-        opts.separator ""
-        opts.separator "Overrides:"
-
-        opts.on("-d", "--directory DIRECTORY", String, "Location of configuration directory. Defaults to current directory.") do |directory|
-          @options.directory = directory
-        end
+        opts.separator "Launch overrides:"
 
         opts.on("-h", "--hostname NAME", String, "The name for the new server.") do |hostname|
           @options.hostname = hostname
@@ -110,47 +133,28 @@ module EC2Launcher
         opts.on("--volume-size SIZE", Integer, "EBS volume size in GB. Defaults to #{EC2Launcher::DEFAULT_VOLUME_SIZE} GB") do |volume_size|
           @options.volume_size = volume_size
         end
-
-        opts.separator ""
-        opts.separator "AWS Security Options:"
-
-        opts.on("--access-key KEY", String, "Amazon access key. Overrides AWS_ACCESS_KEY environment variable.") do |access_key|
-          @options.access_key = access_key
-        end
-
-        opts.on("--secret SECRET", String, "Amazon secret access key. Overrides AWS_SECRET_ACCESS_KEY environment variable.") do |secret|
-          @options.secret = secret
-        end
-
-        opts.separator ""
-        opts.separator "Common options:"
-
-        opts.on_tail("-q", "--quiet", "Display as little information as possible.") do
-          @options.verbosity = :quiet
-        end
-
-        opts.on_tail("-v", "--verbose", "Display as much information as possible.") do
-          @options.verbosity = :verbose
-        end
-
-        # No argument, shows at tail.  This will print an options summary.
-        # Try it and see!
-        opts.on_tail("-?", "--help", "Show this message") do
-          puts opts
-          exit
-        end    
       end
     end
 
-    def parse(args)
-      @command = args.shift
-      unless SUB_COMMANDS.include?(@command)
-        puts "Missing command! " if @command.nil?
-        puts "Invalid command: #{@command}" unless @command.nil? || @command == "-?" || @command == "--help"
-        puts @opts
-        exit 1
+    def terminate_options
+      OptionParser.new do |opts|
+        opts.banner = ""
+        opts.separator "Termination options:"
+        opts.on("--[no-]snapshot-removal", "Remove EBS snapshots. Defaults to TRUE.") do |removal|
+          @options.snapshot_removal = removal
+        end
       end
+    end
 
+    def initialize
+      @global_options = global_options()
+      @subcommands = {
+        'launch' => launch_options(),
+        'terminate' => terminate_options()
+      }
+    end
+
+    def parse(args)
       @options = OpenStruct.new
       @options.list = false
       @options.show_defaults = false
@@ -175,6 +179,37 @@ module EC2Launcher
 
       @options.directory = "./"
 
+      # Parse global options
+      @global_options.order!
+
+      # Extract the request command
+      @command = ARGV.shift.downcase
+
+      unless SUB_COMMANDS.include?(@command)
+        puts "Missing command! " if @command.nil?
+        puts "Invalid command: #{@command}" unless @command.nil? || @command == "-?" || @command == "--help" || @command == "help"
+        puts @global_options
+        exit 1
+      end
+
+      if @command == "-?" || @command == "--help"
+        puts @global_options
+        exit 1
+      end
+
+      if @command == "help"
+        if ARGV.size >= 1 && SUB_COMMANDS.include?(ARGV[0])
+          puts @global_options
+          puts @subcommands[ARGV[0]]
+        else
+          puts @global_options
+        end
+        exit 1
+      end
+
+      # Parse sub command options
+      @subcommands[@command].order! if @subcommands.has_key?(@command)
+
       if @command == "init"
         unless args.length >= 1
           puts "Missing location!"
@@ -184,15 +219,6 @@ module EC2Launcher
         end
         @location = args[0]
       elsif @command =~ /^term/
-        @opts.parse!(args)
-
-        if @options.environ.nil?
-          puts "Missing a required parameter: --environment"
-          puts
-          help
-          exit 1
-        end
-
         unless args.length >= 1
           puts "Missing name of server!"
           puts
@@ -201,8 +227,6 @@ module EC2Launcher
         end
         @hostname = args[0]
       else
-        @opts.parse!(args)
-
         if (@options.environ.nil? || @options.application.nil?) && ! @options.list
           puts "Missing a required parameter: #{@options.environ.nil? ? '--environment' : '--application'}"
           puts

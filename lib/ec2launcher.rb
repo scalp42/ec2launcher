@@ -590,6 +590,9 @@ module EC2Launcher
           else
             launch_mapping[:block_device_mappings] = launch_options[:block_device_mappings]
           end
+
+          # Remove the block_device_mappings entry if it's empty. Otherwise the AWS API will throw an error.
+          launch_mapping.delete(:block_device_mappings) if launch_mapping[:block_device_mappings].keys.empty?
         end
 
         launch_mapping[:iam_instance_profile] = launch_options[:iam_profile] if launch_options[:iam_profile]

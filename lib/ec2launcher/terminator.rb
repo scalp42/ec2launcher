@@ -82,15 +82,15 @@ module EC2Launcher
         # EBS Volumes
         ##############################
         # Find EBS volumes
-        volumes = nil
+        attachments = nil
         AWS.memoize do
-          volumes = instance.block_device_mappings.values
+          attachments = instance.block_device_mappings.values
 
           # Remove snapshots
-          remove_snapshots(ec2, volumes) if snapshot_removal
+          remove_snapshots(ec2, attachments) if snapshot_removal
 
           # Remove volumes, if necessary
-          remove_volumes(ec2, volumes)
+          remove_volumes(ec2, attachments)
         end
 
         private_ip_address = instance.private_ip_address
@@ -114,12 +114,12 @@ module EC2Launcher
       end
     end
 
-    def remove_snapshots(ec2, volumes)
+    def remove_snapshots(ec2, attachments)
       # Iterate over over volumes to find snapshots
       @log.info("Searching for snapshots...")
       snapshots = []
-      volumes.each do |vol|
-        volume_snaps = ec2.snapshots.filter("volume-id", vol.volume.id)
+      attachments.each do |attachment|
+        volume_snaps = ec2.snapshots.filter("volume-id", attachment.volume.volume.id)
         volume_snaps.each {|volume_snapshot| snapshots << volume_snapshot }
       end
 
@@ -131,10 +131,10 @@ module EC2Launcher
       end
     end
 
-    def remove_volumes(ec2, volumes)
+    def remove_volumes(ec2, attachments)
       @log.info("Cleaning up volumes...")
-      volumes.each do |volume|
-        volume.attachments.each do |attachment|
+      attachments.each do |volume|
+        attachments.each do |attachment|
           if attachment.exists? && ! attachment.delete_on_termination?
             @log.info("  Detaching #{attachment.volume.id}...")
             run_with_backoff(30, 1, "detaching #{attachment.volume.id}") do

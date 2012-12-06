@@ -118,8 +118,10 @@ module EC2Launcher
 
           block_device_mappings["/dev/#{device_name}"] = {
             :volume_size => volume_size,
-            :delete_on_termination => true
+            :delete_on_termination => block_device.iops.nil?
           }
+
+          block_device_mappings["/dev/#{device_name}"][:iops] = block_device.iops if block_device.iops
         end
       end
     end

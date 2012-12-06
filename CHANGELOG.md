@@ -1,3 +1,11 @@
+## 1.5.0
+
+* Initial support for Provisioned IOPS for EBS volumes.
+
+## 1.4.3
+
+* Fixed typo when deleting snapshots.
+
 ## 1.4.2
 
 * Remove requirement to provide environment name when terminating an instance.

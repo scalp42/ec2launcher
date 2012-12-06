@@ -175,7 +175,6 @@ module EC2Launcher
       missing_security_groups = []
       security_groups.each do |sg_name|
         missing_security_groups << sg_name unless sg_map.has_key?(sg_name)
-        puts sg_name
         security_group_ids << sg_map[sg_name].security_group_id
       end
 
@@ -280,6 +279,7 @@ module EC2Launcher
       gems = []
       gems += @environment.gems unless @environment.gems.nil?
       gems += @application.gems unless @application.gems.nil?
+      gems << "ec2launcher"
 
       ##############################
       # Packages - preinstall
@@ -340,9 +340,11 @@ module EC2Launcher
           if block_device_mappings[key] =~ /^ephemeral/
               @log.info "  Block device   : #{key}, #{block_device_mappings[key]}"
           else
-              @log.info "  Block device   : #{key}, #{block_device_mappings[key][:volume_size]}GB, " +
-                 "#{block_device_mappings[key][:snapshot_id]}, " +
-                 "(#{block_device_mappings[key][:delete_on_termination] ? 'auto-delete' : 'no delete'})"
+              block_device_text = "  Block device   : #{key}, #{block_device_mappings[key][:volume_size]}GB, "
+              block_device_text += "#{block_device_mappings[key][:snapshot_id]}" if block_device_mappings[key][:snapshot_id]
+              block_device_text += ", (#{block_device_mappings[key][:delete_on_termination] ? 'auto-delete' : 'no delete'}), "
+              block_device_text += "(#{block_device_mappings[key][:iops].nil? ? 'standard' : block_device_mappings[key][:iops].to_s} IOPS)"
+              @log.info block_device_text
           end
         end
       end
@@ -352,10 +354,35 @@ module EC2Launcher
         exit 3
       end
 
+      # Launch options
+      launch_options = {
+        :ami => ami.ami_id,
+        :availability_zone => availability_zone,
+        :aws_keyfile => aws_keyfile,
+        :block_device_mappings => block_device_mappings,
+        :chef_validation_pem_url => chef_validation_pem_url,
+        :email_notifications => email_notifications,
+        :environment => @environment.name,
+        :gems => gems, 
+        :iam_profile => iam_profile,
+        :instance_type => instance_type,
+        :key => key_name,
+        :packages => packages,
+        :provisioned_iops => @application.has_provisioned_iops?(),
+        :roles => roles, 
+        :security_group_ids => security_group_ids,
+        :subnet => subnet
+      }
+
       # Quit if we're only displaying the defaults
       if @options.show_defaults || @options.show_user_data
         if @options.show_user_data
-          user_data = build_launch_command(fqdn_names[0], short_hostnames[0], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+          user_data = build_launch_command(
+            launch_options.merge({
+              :fqdn => fqdn_names[0],
+              :short_name => short_hostnames[0]
+            })
+          )
           @log.info ""
           @log.info "---user-data---"
           @log.info user_data
@@ -371,9 +398,14 @@ module EC2Launcher
       instances = []
       fqdn_names.each_index do |i|
         block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
-        user_data = build_launch_command(fqdn_names[i], short_hostnames[i], roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+        launch_options.merge!({
+          :fqdn => fqdn_names[i],
+          :short_name => short_hostnames[i],
+          :block_device_tags => block_device_tags,
+        })
+        user_data = build_launch_command(launch_options)
 
-        instance = launch_instance(fqdn_names[i], short_hostnames[i], ami.ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings, block_device_tags, subnet)
+        instance = launch_instance(launch_options, user_data)
         instances << instance
 
         public_dns_name = get_instance_dns(instance, true)
@@ -513,37 +545,55 @@ module EC2Launcher
 
     # Launches an EC2 instance.
     #
-    # @param [String] FQDN for the new host.
-    # @param [String] ami_id id for the AMI to use.
-    # @param [String] availability_zone EC2 availability zone to use
-    # @param [String] key_name EC2 SSH key to use.
-    # @param [Array<String>] security_group_ids list of security groups ids
-    # @param [String, nil] iam_profile The name or ARN of an IAM instance profile. May be nil.
-    # @param [String] instance_type EC2 instance type.
-    # @param [String] user_data command data to store pass to the instance in the EC2 user-data field.
-    # @param [Hash<String,Hash<String, String>, nil] block_device_mappings mapping of device names to block device details. 
-    #        See http://docs.amazonwebservices.com/AWSRubySDK/latest/AWS/EC2/InstanceCollection.html#create-instance_method.
-    # @param [Hash<String,Hash<String, String>>, nil] block_device_tags mapping of device names to hash objects with tags for the new EBS block devices.
+    # launch_options = {
+    #   :ami
+    #   :availability_zone
+    #   :aws_keyfile
+    #   :block_device_mappings
+    #   :block_device_tags
+    #   :chef_validation_pem_url
+    #   :email_notifications
+    #   :fqdn
+    #   :gems
+    #   :iam_profile
+    #   :instance_type
+    #   :key
+    #   :packages
+    #   :roles
+    #   :security_group_ids
+    #   :short_name
+    #   :subnet
+    # }
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
-    def launch_instance(hostname, short_hostname, ami_id, availability_zone, key_name, security_group_ids, iam_profile, instance_type, user_data, block_device_mappings = nil, block_device_tags = nil, vpc_subnet = nil)
-      @log.warn "Launching instance... #{hostname}"
+    def launch_instance(launch_options, user_data)
+      @log.warn "Launching instance... #{launch_options[:fqdn]}"
       new_instance = nil
       run_with_backoff(30, 1, "launching instance") do
         launch_mapping = {
-            :image_id => ami_id,
-            :availability_zone => availability_zone,
-            :key_name => key_name,
-            :security_group_ids => security_group_ids,
+            :image_id => launch_options[:ami],
+            :availability_zone => launch_options[:availability_zone],
+            :key_name => launch_options[:key],
+            :security_group_ids => launch_options[:security_group_ids],
             :user_data => user_data,
-            :instance_type => instance_type
+            :instance_type => launch_options[:instance_type]
         }
-        unless block_device_mappings.nil? || block_device_mappings.keys.empty?
-          launch_mapping[:block_device_mappings] = block_device_mappings
+        unless launch_options[:block_device_mappings].nil? || launch_options[:block_device_mappings].keys.empty?
+          if launch_options[:provisioned_iops]
+            # Only include ephemeral devices if we're using provisioned IOPS for the EBS volumes
+            launch_mapping[:block_device_mappings] = {}
+            launch_options[:block_device_mappings].keys.sort.each do |block_device_name|
+              if block_device_name =~ /^ephemeral/
+                launch_mapping[:block_device_mappings][block_device_name] = launch_options[:block_device_mappings][block_device_name]
+              end
+            end
+          else
+            launch_mapping[:block_device_mappings] = launch_options[:block_device_mappings]
+          end
         end
 
-        launch_mapping[:iam_instance_profile] = iam_profile if iam_profile
-        launch_mapping[:subnet] = vpc_subnet if vpc_subnet
+        launch_mapping[:iam_instance_profile] = launch_options[:iam_profile] if launch_options[:iam_profile]
+        launch_mapping[:subnet] = launch_options[:vpc_subnet] if launch_options[:vpc_subnet]
 
         new_instance = @ec2.instances.create(launch_mapping)
       end
@@ -568,21 +618,24 @@ module EC2Launcher
       ##############################
       # Tag instance
       @log.info "Tagging instance..."
-      run_with_backoff(30, 1, "tag #{new_instance.id}, tag: name, value: #{hostname}") { new_instance.add_tag("Name", :value => hostname) }
-      run_with_backoff(30, 1, "tag #{new_instance.id}, tag: short_name, value: #{short_hostname}") { new_instance.add_tag("short_name", :value => short_hostname) }
+      run_with_backoff(30, 1, "tag #{new_instance.id}, tag: name, value: #{launch_options[:fqdn]}") { new_instance.add_tag("Name", :value => launch_options[:fqdn]) }
+      run_with_backoff(30, 1, "tag #{new_instance.id}, tag: short_name, value: #{launch_options[:short_name]}") { new_instance.add_tag("short_name", :value => launch_options[:short_name]) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: environment, value: #{@environment.name}") { new_instance.add_tag("environment", :value => @environment.name) }
       run_with_backoff(30, 1, "tag #{new_instance.id}, tag: application, value: #{@application.name}") { new_instance.add_tag("application", :value => @application.name) }
+      if @options.clone_host
+        run_with_backoff(30, 1, "tag #{new_instance.id}, tag: cloned_from, value: #{@options.clone_host}") { new_instance.add_tag("cloned_from", :value => @options.clone_host) }
+      end
 
       ##############################
       # Tag volumes
-      unless block_device_tags.empty?
+      unless launch_options[:provisioned_iops] || launch_options[:block_device_tags].empty?
         @log.info "Tagging volumes..."
         AWS.start_memoizing
-        block_device_tags.keys.each do |device|
+        launch_options[:block_device_tags].keys.each do |device|
           v = new_instance.block_device_mappings[device].volume
-          block_device_tags[device].keys.each do |tag_name|
-            run_with_backoff(30, 1, "tag #{v.id}, tag: #{tag_name}, value: #{block_device_tags[device][tag_name]}") do
-              v.add_tag(tag_name, :value => block_device_tags[device][tag_name])
+          launch_options[:block_device_tags][device].keys.each do |tag_name|
+            run_with_backoff(30, 1, "tag #{v.id}, tag: #{tag_name}, value: #{launch_options[:block_device_tags][device][tag_name]}") do
+              v.add_tag(tag_name, :value => launch_options[:block_device_tags][device][tag_name])
             end
           end
         end
@@ -592,8 +645,8 @@ module EC2Launcher
       ##############################
       # Add to Route53
       if @route53
-        @log.info "Adding A record to Route53: #{hostname} => #{new_instance.private_ip_address}"
-        @route53.create_record(hostname, new_instance.private_ip_address, 'A')
+        @log.info "Adding A record to Route53: #{launch_options[:fqdn]} => #{new_instance.private_ip_address}"
+        @route53.create_record(launch_options[:fqdn], new_instance.private_ip_address, 'A')
       end
 
       new_instance
@@ -628,26 +681,42 @@ module EC2Launcher
 
     # Builds the launch scripts that should run on the new instance.
     #
-    # @param [String] fqdn Fully qualified hostname
-    # @param [String] short_name Short hostname without the domain
-    # @param [String] chef_validation_pem_url URL For the Chef validation pem file
-    # @param [String] aws_keyfile Name of the AWS key to use
-    # @param [Array<String>] gems List of gems to pre-install
-    # @param [Array<String>] packages List of packages to pre-install
-    # @param [EC2Launcher::DSL::EmailNotifications] email_notifications Email notification settings for launch updates
+    # launch_options = {
+    #   :ami
+    #   :availability_zone
+    #   :aws_keyfile
+    #   :block_device_mappings
+    #   :block_device_tags
+    #   :chef_validation_pem_url
+    #   :email_notifications
+    #   :fqdn
+    #   :gems
+    #   :iam_profile
+    #   :instance_type
+    #   :key
+    #   :packages
+    #   :roles
+    #   :security_group_ids
+    #   :short_name
+    #   :subnet
+    # }
     #
     # @return [String] Launch commands to pass into new instance as userdata
-    def build_launch_command(fqdn, short_hostname, roles, chef_validation_pem_url, aws_keyfile, gems, packages, email_notifications)
+    def build_launch_command(launch_options)
       # Build JSON for setup scripts
+
+      # Require ec2launcher gem if cloning and using provisioned IOPS
       setup_json = {
-        'hostname' => fqdn,
-        'short_hostname' => short_hostname,
-        'roles' => roles,
+        'hostname' => launch_options[:fqdn],
+        'short_hostname' => launch_options[:short_name],
+        'block_device_mappings' => launch_options[:block_device_mappings],
+        'roles' => launch_options[:roles],
         'chef_server_url' => @environment.chef_server_url,
-        'chef_validation_pem_url' => chef_validation_pem_url,
-        'aws_keyfile' => aws_keyfile,
-        'gems' => gems,
-        'packages' => packages
+        'chef_validation_pem_url' => launch_options[:chef_validation_pem_url],
+        'aws_keyfile' => launch_options[:aws_keyfile],
+        'gems' => launch_options[:gems],
+        'packages' => launch_options[:packages],
+        'provisioned_iops' => false
       }
       setup_json["gem_path"] = @instance_paths.gem_path
       setup_json["ruby_path"] = @instance_paths.ruby_path
@@ -656,9 +725,16 @@ module EC2Launcher
 
       unless @application.block_devices.nil? || @application.block_devices.empty?
         setup_json['block_devices'] = @application.block_devices
+
+        @application.block_devices.each do |bd|
+          if bd.provisioned_iops?
+            setup_json['provisioned_iops'] = true
+            break
+          end
+        end
       end
-      unless email_notifications.nil?
-        setup_json['email_notifications'] = email_notifications
+      unless launch_options[:email_notifications].nil?
+        setup_json['email_notifications'] = launch_options[:email_notifications]
       end
 
       ##############################
@@ -711,7 +787,7 @@ EOF
         user_data += "\nchmod +x /tmp/setup.rb"
         # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
 
-        user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{fqdn} /tmp/setup.json"
+        user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{launch_options['fqdn']} /tmp/setup.json"
         user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
         user_data += " 2>&1 > /var/log/cloud-startup.log"
       end

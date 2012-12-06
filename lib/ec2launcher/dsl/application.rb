@@ -141,6 +141,19 @@ module EC2Launcher
 				end
 			end
 
+			def has_provisioned_iops?()
+				return false unless @block_devices
+
+				provisioned_iops = false
+				@block_devices.each do |bd|
+	        if bd.provisioned_iops?
+	          provisioned_iops = true
+	          break
+	        end
+				end
+				provisioned_iops
+			end
+
 			# IAM profile role name to use for new instances.
 			#
 			# Expects one param in the form of either:

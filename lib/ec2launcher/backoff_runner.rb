@@ -35,5 +35,24 @@ module EC2Launcher
       true
     end
 
+    # Runs a block that returns true or false. If the block returns
+    # false, retries the request after sleeping. Repeated failures
+    # trigger an exponential backoff in sleep time.
+    #
+    # @return [Boolean] True if the request suceeded, False otherwise.
+    #
+    def test_with_backoff(max_time, sleep_time, message, &block)
+      if sleep_time < max_time
+        result = block.call
+        unless result
+          puts "Retrying #{message} in #{sleep_time} seconds"
+          sleep sleep_time
+          result = test_with_backoff(max_time, sleep_time * 2, message, &block)
+        end
+        result
+      else
+        false
+      end
+    end
   end
 end

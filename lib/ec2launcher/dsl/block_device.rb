@@ -2,6 +2,7 @@
 # Copyright (c) 2012 Sean Laurent
 #
 require 'ec2launcher/dsl/helper'
+require 'json'
 
 module EC2Launcher
 	module DSL
@@ -16,6 +17,7 @@ module EC2Launcher
 			dsl_accessor :owner
 			dsl_accessor :raid_level
 			dsl_accessor :size
+			dsl_accessor :iops
 
 			def initialize()
 				@count = 1
@@ -27,15 +29,32 @@ module EC2Launcher
 				@raid_level.nil?
 			end
 
-			def to_json(*a)
+			def provisioned_iops?()
+				! @iops.nil? || @iops == 0
+			end
+
+			def as_json(*)
 				{
-					"name" => @name,
-					"count" => @count,
-					"raid_level" => @raid_level,
-					"mount_point" => @mount,
-					"owner" => @owner,
-					"group" => @group
-				}.to_json(*a)
+					JSON.create_id => self.class.name,
+					"data" => {
+						"name" => @name,
+						"count" => @count,
+						"size" => @size,
+						"iops" => @iops,
+						"raid_level" => @raid_level,
+						"mount_point" => @mount,
+						"owner" => @owner,
+						"group" => @group
+					}
+				}
+			end
+
+			def to_json(*a)
+				as_json.to_json(*a)
+			end
+
+			def self.json_create(o)
+				new(*o['data'])
 			end
 		end
 	end

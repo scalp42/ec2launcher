@@ -78,9 +78,19 @@ module EC2Launcher
         aws_route53 = AWS::Route53.new if @environment.route53_zone_id
         route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
 
-        # Remove EBS snapshots
+        ##############################
+        # EBS Volumes
+        ##############################
+        # Find EBS volumes
+        volumes = nil
         AWS.memoize do
-          remove_snapshots(ec2, instance) if snapshot_removal
+          volumes = instance.block_device_mappings.values
+
+          # Remove snapshots
+          remove_snapshots(ec2, volumes) if snapshot_removal
+
+          # Remove volumes, if necessary
+          remove_volumes(ec2, volumes)
         end
 
         private_ip_address = instance.private_ip_address
@@ -104,20 +114,58 @@ module EC2Launcher
       end
     end
 
-    def remove_snapshots(ec2, instance)
-      # Find EBS volumes for instance
-      volumes = instance.block_device_mappings.values
-
+    def remove_snapshots(ec2, volumes)
       # Iterate over over volumes to find snapshots
       @log.info("Searching for snapshots...")
       snapshots = []
       volumes.each do |vol|
         volume_snaps = ec2.snapshots.filter("volume-id", vol.volume.id)
-        volume_snaps.each {|volume_snapshot| snaphots << volume_snapshot }
+        volume_snaps.each {|volume_snapshot| snapshots << volume_snapshot }
       end
 
       @log.info("Deleting #{snapshots.size} snapshots...")
-      snapshots.each {|snap| snap.delete }
+      snapshots.each do |snap|
+        run_with_backoff(30, 1, "Deleting snapshot #{snap.id}") do
+          snap.delete
+        end
+      end
+    end
+
+    def remove_volumes(ec2, volumes)
+      @log.info("Cleaning up volumes...")
+      volumes.each do |volume|
+        volume.attachments.each do |attachment|
+          if attachment.exists? && ! attachment.delete_on_termination?
+            @log.info("  Detaching #{attachment.volume.id}...")
+            run_with_backoff(30, 1, "detaching #{attachment.volume.id}") do
+              attachment.volume.detach_from(attachment.instance, attachment.device)
+            end
+
+            # Wait for volume to fully detach
+            detached = test_with_backoff(30, 1, "waiting for #{attachment.volume.id} to detach") do
+              attachment.volume.status != :in_use
+            end
+
+            # Volume failed to detach - do a force detatch instead
+            unless detached
+              @log.info("  Failed to detach #{attachment.volume.id}")
+              run_with_backoff(30, 1, "force detaching #{attachment.volume.id}") do
+                attachment.volume.detach_from(attachment.instance, attachment.device, {:force => true})
+              end
+              # Wait for volume to fully detach
+              detached = test_with_backoff(30, 1, "waiting for #{attachment.volume.id} to force detach") do
+                attachment.volume.status != :in_use
+              end
+            end
+
+            @log.info("  Deleting volume #{attachment.volume.id}")
+            run_with_backoff(30, 1, "delete volume #{attachment.volume.id}") do
+              attachment.volume.delete
+            end
+            break
+          end
+        end
+      end
     end
   end
 end

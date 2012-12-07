@@ -450,12 +450,7 @@ EOF
     # Verify all volumes were properly partitioned
     missing_devices = []
     device_list.each do |device|
-      device_pathname = File.join("/dev", "#{device}1")
-      unless File.exists?(device_pathname)
-        puts "  * Missing: #{device_pathname}"
-        puts "    -- " + `ls -al #{device_pathname}`
-        missing_devices << device
-      end
+      missing_devices << device unless File.exists?("#{device}1")
     end
 
     # Retry partitioning for failed volumes

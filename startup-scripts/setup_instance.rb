@@ -124,7 +124,7 @@ class InstanceSetup
     ##############################
 
     #  Process ephemeral devices first
-    ephemeral_drive_count = case EC2_INSTANCE_TYPE
+    ephemeral_drive_count = case @EC2_INSTANCE_TYPE
       when "m1.small" then 1
       when "m1.medium" then 1
       when "m2.xlarge" then 1

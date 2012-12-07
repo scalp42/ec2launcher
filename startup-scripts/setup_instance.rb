@@ -171,7 +171,7 @@ class InstanceSetup
     knife_config = <<EOF
 log_level                :info
 log_location             STDOUT
-node_name                '#{options.hostname}'
+node_name                '#{@options.hostname}'
 client_key               '/etc/chef/client.pem'
 validation_client_name   'chef-validator'
 validation_key           '/etc/chef/validation.pem'
@@ -187,7 +187,7 @@ EOF
     ##############################
     # Add roles
     instance_data["roles"].each do |role|
-      cmd = "#{knife_path} node run_list add #{options.hostname} \"role[#{role}]\""
+      cmd = "#{knife_path} node run_list add #{@options.hostname} \"role[#{role}]\""
       puts cmd
       puts `#{cmd}`
     end
@@ -218,9 +218,9 @@ EOF
       ses.send_email(
         :from => instance_data["email_notifications"]["from"],
         :to => instance_data["email_notifications"]["to"],
-        :subject => "Server setup complete: #{options.hostname}",
-        :body_text => "Server setup is complete for Host: #{options.hostname}, Environment: #{options.environ}, Application: #{options.application}",
-        :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{options.hostname}</div><div><strong>Environment:</strong> #{options.environ}</div><div><strong>Application:</strong> #{options.application}</div>"
+        :subject => "Server setup complete: #{@options.hostname}",
+        :body_text => "Server setup is complete for Host: #{@options.hostname}, Environment: #{@options.environ}, Application: #{@options.application}",
+        :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{@options.hostname}</div><div><strong>Environment:</strong> #{@options.environ}</div><div><strong>Application:</strong> #{@options.application}</div>"
       )
     else
       puts "Skipping email notification."
@@ -364,7 +364,7 @@ EOF
     instance_data["block_devices"].each do |block_device|
       if block_device.raid_level.nil?
         # If we're not cloning an existing snapshot, then we need to partition and format the drive.
-        if options.clone_host.nil?
+        if @options.clone_host.nil?
           partition_devices([ "/dev/#{next_device_name}" ])
           format_filesystem(@system_arch, "/dev/#{next_device_name}1")
         end
@@ -377,7 +377,7 @@ EOF
           next_device_name = device_name
         end
         puts "Setting up attached raid array... system_arch = #{@system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
-        raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! options.clone_host.nil?)
+        raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! @options.clone_host.nil?)
         mount_device(raid_device_name, block_device.mount_point, block_device.owner, block_device.group, @default_fs_type)
         raid_array_count += 1
       end

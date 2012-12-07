@@ -375,7 +375,7 @@ EOF
           partition_devices([ "/dev/#{next_device_name}" ])
           format_filesystem(@system_arch, "/dev/#{next_device_name}1")
         end
-        mount_device("/dev/#{next_device_name}1", block_device.mount_point, block_device.owner, block_device.group, @default_fs_type)
+        mount_device("/dev/#{next_device_name}1", block_device.mount, block_device.owner, block_device.group, @default_fs_type)
         next_device_name.next!
       else
         raid_devices = []
@@ -385,7 +385,7 @@ EOF
         end
         puts "Setting up attached raid array... system_arch = #{@system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
         raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! @options.clone_host.nil?)
-        mount_device(raid_device_name, block_device.mount_point, block_device.owner, block_device.group, @default_fs_type)
+        mount_device(raid_device_name, block_device.mount, block_device.owner, block_device.group, @default_fs_type)
         raid_array_count += 1
       end
     end

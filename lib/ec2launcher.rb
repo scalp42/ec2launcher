@@ -790,6 +790,8 @@ EOF
         user_data += "\nchmod +x /tmp/setup.rb"
         # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
 
+        user_data += "\ngem install ec2launcher --no-ri --no-rdoc"
+
         user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{launch_options[:fqdn]} /tmp/setup.json"
         user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
         user_data += " 2>&1 > /var/log/cloud-startup.log"

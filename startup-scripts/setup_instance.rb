@@ -360,24 +360,24 @@ EOF
 
     raid_array_count = 0
     next_device_name = "xvdj"
-    instance_data["block_devices"].each do |block_device_json|
-      if block_device_json["raid_level"].nil?
+    instance_data["block_devices"].each do |block_device|
+      if block_device.raid_level.nil?
         # If we're not cloning an existing snapshot, then we need to partition and format the drive.
         if options.clone_host.nil?
           partition_devices([ "/dev/#{next_device_name}" ])
           format_filesystem(system_arch, "/dev/#{next_device_name}1")
         end
-        mount_device("/dev/#{next_device_name}1", block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
+        mount_device("/dev/#{next_device_name}1", block_device.mount_point, block_device.owner, block_device.group, default_fs_type)
         next_device_name.next!
       else
         raid_devices = []
-        build_block_devices(block_device_json["count"], next_device_name) do |device_name, index|
+        build_block_devices(block_device.count, next_device_name) do |device_name, index|
           raid_devices << "/dev/#{device_name}"
           next_device_name = device_name
         end
         puts "Setting up attached raid array... system_arch = #{system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
-        raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device_json["raid_level"].to_i, ! options.clone_host.nil?)
-        mount_device(raid_device_name, block_device_json["mount_point"], block_device_json["owner"], block_device_json["group"], default_fs_type)
+        raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! options.clone_host.nil?)
+        mount_device(raid_device_name, block_device.mount_point, block_device.owner, block_device.group, default_fs_type)
         raid_array_count += 1
       end
     end

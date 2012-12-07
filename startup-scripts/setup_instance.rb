@@ -432,6 +432,8 @@ EOF
 
   # Partitions a list of mounted EBS volumes
   def partition_devices(device_list, attempt = 0, max_attempts = 3)
+    return false if attempt >= max_attempts
+
     puts case attempt
       when 0 then  "Partioning devices ..." 
       else "Retrying device partitioning (attempt #{attempt + 1}) ..." 
@@ -448,13 +450,20 @@ EOF
     # Verify all volumes were properly partitioned
     missing_devices = []
     device_list.each do |device|
-      missing_devices << device unless File.exists?(File.join("/dev", "#{device}1"))
+      device_pathname = File.join("/dev", "#{device}1")
+      unless File.exists?(device_pathname)
+        puts "  * Missing: #{device_pathname}"
+        puts "    -- " + `ls -al #{device_pathname}`
+        missing_devices << device
+      end
     end
 
     # Retry partitioning for failed volumes
+    response = true
     if missing_devices.size > 0
-      partition_devices(missing_devices, attempt + 1, max_attempts)
+      response = partition_devices(missing_devices, attempt + 1, max_attempts)
     end
+    response
   end
 
   ##############################

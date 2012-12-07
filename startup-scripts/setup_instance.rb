@@ -113,14 +113,15 @@ class InstanceSetup
     ##############################
     # EBS VOLUMES
     ##############################
-    # Create and setup EBS volumes = 
+    @system_arch = `uname -p`.strip
+    @default_fs_type = @system_arch == "x86_64" ? "xfs" : "ext4"
+
+    # Create and setup EBS volumes
     setup_ebs_volumes(instance_data) unless instance_data["block_devices"].nil?
   
     ##############################
     # EPHEMERAL VOLUMES
     ##############################
-    system_arch = `uname -p`.strip
-    default_fs_type = system_arch == "x86_64" ? "xfs" : "ext4"
 
     #  Process ephemeral devices first
     ephemeral_drive_count = case EC2_INSTANCE_TYPE
@@ -148,13 +149,13 @@ class InstanceSetup
 
     # Format and mount the ephemeral drives
     build_block_devices(ephemeral_drive_count, "xvdf") do |device_name, index|
-      format_filesystem(system_arch, "/dev/#{device_name}1")
+      format_filesystem(@system_arch, "/dev/#{device_name}1")
 
       mount_point = case index
         when 0 then "/mnt"
         else "/mnt/extra#{index - 1}"
       end
-      mount_device("/dev/#{device_name}1", mount_point, "root", "root", default_fs_type)
+      mount_device("/dev/#{device_name}1", mount_point, "root", "root", @default_fs_type)
     end
 
     ##############################
@@ -365,9 +366,9 @@ EOF
         # If we're not cloning an existing snapshot, then we need to partition and format the drive.
         if options.clone_host.nil?
           partition_devices([ "/dev/#{next_device_name}" ])
-          format_filesystem(system_arch, "/dev/#{next_device_name}1")
+          format_filesystem(@system_arch, "/dev/#{next_device_name}1")
         end
-        mount_device("/dev/#{next_device_name}1", block_device.mount_point, block_device.owner, block_device.group, default_fs_type)
+        mount_device("/dev/#{next_device_name}1", block_device.mount_point, block_device.owner, block_device.group, @default_fs_type)
         next_device_name.next!
       else
         raid_devices = []
@@ -375,9 +376,9 @@ EOF
           raid_devices << "/dev/#{device_name}"
           next_device_name = device_name
         end
-        puts "Setting up attached raid array... system_arch = #{system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
-        raid_device_name = setup_attached_raid_array(system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! options.clone_host.nil?)
-        mount_device(raid_device_name, block_device.mount_point, block_device.owner, block_device.group, default_fs_type)
+        puts "Setting up attached raid array... system_arch = #{@system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
+        raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! options.clone_host.nil?)
+        mount_device(raid_device_name, block_device.mount_point, block_device.owner, block_device.group, @default_fs_type)
         raid_array_count += 1
       end
     end

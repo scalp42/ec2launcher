@@ -54,7 +54,7 @@ module EC2Launcher
 			end
 
 			def self.json_create(o)
-				new(*o['data'])
+				new(o['data'])
 			end
 		end
 	end

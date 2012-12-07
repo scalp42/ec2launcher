@@ -430,30 +430,31 @@ EOF
     puts `chown #{owner}:#{owner} #{mount_point}`
   end
 
-  def partition_device(device, attempt = 0, max_attempts = 3, sleep_time = 4)
-    if attempt >= max_attempts
-      puts "  * Failed to partition #{device}"
-      return
-    end
-
-    puts "  * Retrying #{device} (attempt #{attempt + 1})" if attempt > 0
-    `echo 0|sfdisk #{device}`
-    unless File.exists?(File.join("/dev", device))
-      sleep sleep_time
-      partition_device(device, attempt + 1, max_attempts, sleep_time * 2)
-    end
-  end
-
   # Partitions a list of mounted EBS volumes
-  def partition_devices(device_list)
-    puts "Partioning devices ..."
+  def partition_devices(device_list, attempt = 0, max_attempts = 3)
+    puts case attempt
+      when 0 then  "Partioning devices ..." 
+      else "Retrying device partitioning (attempt #{attempt + 1}) ..." 
+    end
+
     device_list.each do |device|
       puts "  * #{device}"
-      partition_device(device)
+      `echo 0|sfdisk #{device}`
     end
 
     puts "Sleeping 10 seconds to reload partition tables ..."
     sleep 10
+
+    # Verify all volumes were properly partitioned
+    missing_devices = []
+    device_list.each do |device|
+      missing_devices << device unless File.exists?(File.join("/dev", "#{device}1"))
+    end
+
+    # Retry partitioning for failed volumes
+    if missing_devices.size > 0
+      partition_devices(missing_devices, attempt + 1, max_attempts)
+    end
   end
 
   ##############################

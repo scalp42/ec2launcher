@@ -131,38 +131,51 @@ module EC2Launcher
       end
     end
 
+    def remove_volume(ec2, instance, device, volume)
+      @log.info("  Detaching #{volume.id}...")
+      run_with_backoff(30, 1, "detaching #{volume.id}") do
+        volume.detach_from(instance, device)
+      end
+
+      # Wait for volume to fully detach
+      detached = test_with_backoff(120, 1, "waiting for #{volume.id} to detach") do
+        volume.status == :available
+      end
+
+      # Volume failed to detach - do a force detatch instead
+      unless detached
+        @log.info("  Failed to detach #{volume.id}")
+        run_with_backoff(60, 1, "force detaching #{volume.id}") do
+          unless volume.status == :available
+            volume.detach_from(instance, device, {:force => true})
+          end
+        end
+        # Wait for volume to fully detach
+        detached = test_with_backoff(120, 1, "waiting for #{volume.id} to force detach") do
+          volume.status == :available
+        end
+      end
+
+      @log.info("  Deleting volume #{volume.id}")
+      run_with_backoff(30, 1, "delete volume #{volume.id}") do
+        volume.delete
+      end
+    end
+
     def remove_volumes(ec2, attachments)
       @log.info("Cleaning up volumes...")
-      attachments.each do |attachment|
-        if attachment.exists? && ! attachment.delete_on_termination
-          @log.info("  Detaching #{attachment.volume.id}...")
-          run_with_backoff(30, 1, "detaching #{attachment.volume.id}") do
-            attachment.volume.detach_from(attachment.instance, attachment.device)
-          end
 
-          # Wait for volume to fully detach
-          detached = test_with_backoff(30, 1, "waiting for #{attachment.volume.id} to detach") do
-            attachment.volume.status != :in_use
+      AWS.memoize do
+        removal_threads = []
+        attachments.each do |attachment|
+          if attachment.exists? && ! attachment.delete_on_termination
+            removal_threads << Thread.new {
+              remove_volume(ec2, attachment.instance, attachment.device, attachment.volume)
+            }
           end
-
-          # Volume failed to detach - do a force detatch instead
-          unless detached
-            @log.info("  Failed to detach #{attachment.volume.id}")
-            run_with_backoff(30, 1, "force detaching #{attachment.volume.id}") do
-              attachment.volume.detach_from(attachment.instance, attachment.device, {:force => true})
-            end
-            # Wait for volume to fully detach
-            detached = test_with_backoff(30, 1, "waiting for #{attachment.volume.id} to force detach") do
-              attachment.volume.status != :in_use
-            end
-          end
-
-          @log.info("  Deleting volume #{attachment.volume.id}")
-          run_with_backoff(30, 1, "delete volume #{attachment.volume.id}") do
-            attachment.volume.delete
-          end
-          break
         end
+
+        removal_threads.each {|t| t.join }
       end
     end
   end

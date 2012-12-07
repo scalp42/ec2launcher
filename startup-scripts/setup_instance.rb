@@ -256,27 +256,8 @@ EOF
     $?
   end
 
-  def create_attach_volume(instance, device_name, block_data)
+  def attach_volume(instance, device_name, volume)
     ec2 = AWS::EC2.new
-
-    block_info = {}
-    block_info[:availability_zone] = @AZ
-    block_info[:size] = block_data["volume_size"]
-    block_info[:snapshot_id] = block_data["snapshot_id"] if block_data["snapshot_id"]
-    if block_data["iops"]
-      block_info[:iops] = block_data["iops"]
-      block_info[:volume_type] = "io1"
-    end
-
-    # Create volume
-    block_device_text = "Creating EBS volume: #{device_name}, #{block_info[:volume_size]}GB, "
-    block_device_text += "#{block_info[:snapshot_id]}" if block_info[:snapshot_id]
-    block_device_text += "#{block_info[:iops].nil? ? 'standard' : block_info[:iops].to_s} IOPS"
-    puts block_device_text
-    volume = nil
-    run_with_backoff(60, 1, "creating ebs volume") do 
-      volume = ec2.volumes.create(block_info)
-    end
 
     volume_available = test_with_backoff(120, 1, "check EBS volume available #{device_name} (#{volume.id})") do
       volume.status == :available
@@ -293,9 +274,9 @@ EOF
       attachment.status == :attached
     end
 
-    # TODO: Handle when volume fails to attachment
+    # TODO: Handle when volume fails to attach
 
-    volume
+    attachment
   end
 
   def setup_ebs_volumes(instance_data)
@@ -322,22 +303,40 @@ EOF
       ec2 = AWS::EC2.new
       instance = ec2.instances[@INSTANCE_ID]
 
+      volumes = {}
       block_creation_threads = []
       instance_data["block_device_mappings"].keys.sort.each do |device_name|
         block_data = instance_data["block_device_mappings"][device_name]
         next if block_data =~ /^ephemeral/
 
+        block_info = {}
+        block_info[:availability_zone] = @AZ
+        block_info[:size] = block_data["volume_size"]
+        block_info[:snapshot_id] = block_data["snapshot_id"] if block_data["snapshot_id"]
+        if block_data["iops"]
+          block_info[:iops] = block_data["iops"]
+          block_info[:volume_type] = "io1"
+        end
+
+        # Create volume
+        block_device_text = "Creating EBS volume: #{device_name}, #{block_info[:volume_size]}GB, "
+        block_device_text += "#{block_info[:snapshot_id]}" if block_info[:snapshot_id]
+        block_device_text += "#{block_info[:iops].nil? ? 'standard' : block_info[:iops].to_s} IOPS"
+        puts block_device_text
+        volume = nil
+        run_with_backoff(60, 1, "creating ebs volume") do 
+          volume = ec2.volumes.create(block_info)
+        end
+
+        volumes[device_name] = volume
+
         block_creation_threads << Thread.new {
-          volume = create_attach_volume(instance, device_name, block_data)
-          Thread.current["device_name"] = device_name
-          Thread.current["volume"] = volume
+          attach_volume(instance, device_name, volume)
         }
       end
       
-      volumes = {}
       block_creation_threads.each do |t|
         t.join
-        volumes[t["device_name"]] = t["volume"]
       end
 
       AWS.memoize do

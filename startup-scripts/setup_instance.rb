@@ -256,7 +256,9 @@ EOF
     $?
   end
 
-  def create_attach_volume(ec2, instance, device_name, block_data)
+  def create_attach_volume(instance, device_name, block_data)
+    ec2 = AWS::EC2.new
+
     block_info = {}
     block_info[:availability_zone] = @AZ
     block_info[:size] = block_data["volume_size"]
@@ -321,24 +323,24 @@ EOF
       instance = ec2.instances[@INSTANCE_ID]
 
       block_creation_threads = []
+      instance_data["block_device_mappings"].keys.sort.each do |device_name|
+        block_data = instance_data["block_device_mappings"][device_name]
+        next if block_data =~ /^ephemeral/
+
+        block_creation_threads << Thread.new {
+          volume = create_attach_volume(instance, device_name, block_data)
+          Thread.current["device_name"] = device_name
+          Thread.current["volume"] = volume
+        }
+      end
+      
+      volumes = {}
+      block_creation_threads.each do |t|
+        t.join
+        volumes[t["device_name"]] = t["volume"]
+      end
+
       AWS.memoize do
-        instance_data["block_device_mappings"].keys.sort.each do |device_name|
-          block_data = instance_data["block_device_mappings"][device_name]
-          next if block_data =~ /^ephemeral/
-
-          block_creation_threads << Thread.new {
-            volume = create_attach_volume(ec2, instance, device_name, block_data)
-            Thread.current["device_name"] = device_name
-            Thread.current["volume"] = volume
-          }
-        end
-        
-        volumes = {}
-        block_creation_threads.each do |t|
-          t.join
-          volumes[t["device_name"]] = t["volume"]
-        end
-
         block_device_builder = EC2Launcher::BlockDeviceBuilder.new(ec2, 60)
         block_device_tags = block_device_builder.generate_device_tags(instance_data["hostname"], instance_data["short_hostname"], instance_data["environment"], instance_data["block_devices"])
         unless block_device_tags.empty?

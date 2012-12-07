@@ -7,6 +7,8 @@ require 'ostruct'
 
 require 'json'
 
+require 'ec2launcher'
+
 SETUP_SCRIPT = "setup_instance.rb"
 SETUP_SCRIPT_URL = "https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts//#{SETUP_SCRIPT}"
 

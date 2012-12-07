@@ -96,16 +96,16 @@ class InstanceSetup
     end
     @AWS_ACCESS_KEY = properties["AWS_ACCESS_KEY"].gsub('"', '')
     @AWS_SECRET_ACCESS_KEY = properties["AWS_SECRET_ACCESS_KEY"].gsub('"', '')
-  end
-
-  def setup()
-    initialize_aws(@AWS_ACCESS_KEY, @AWS_SECRET_ACCESS_KEY)
 
     ##############################
     # Find current instance data
     @EC2_INSTANCE_TYPE = `wget -T 5 -q -O - http://169.254.169.254/latest/meta-data/instance-type`
     @AZ = `wget -T 5 -q -O - http://169.254.169.254/latest/meta-data/placement/availability-zone`
     @INSTANCE_ID = `wget -T 5 -q -O - http://169.254.169.254/latest/meta-data/instance-id`
+  end
+
+  def setup()
+    initialize_aws(@AWS_ACCESS_KEY, @AWS_SECRET_ACCESS_KEY)
 
     # Read the setup JSON file
     instance_data = JSON.parse(File.read(@setup_json_filename))
@@ -256,11 +256,51 @@ EOF
     $?
   end
 
+  def create_attach_volume(ec2, instance, device_name, block_data)
+    block_info = {}
+    block_info[:availability_zone] = @AZ
+    block_info[:size] = block_data["volume_size"]
+    block_info[:snapshot_id] = block_data["snapshot_id"] if block_data["snapshot_id"]
+    if block_data["iops"]
+      block_info[:iops] = block_data["iops"]
+      block_info[:volume_type] = "io1"
+    end
+
+    # Create volume
+    block_device_text = "Creating EBS volume: #{device_name}, #{block_info[:volume_size]}GB, "
+    block_device_text += "#{block_info[:snapshot_id]}" if block_info[:snapshot_id]
+    block_device_text += "#{block_info[:iops].nil? ? 'standard' : block_info[:iops].to_s} IOPS"
+    puts block_device_text
+    volume = nil
+    run_with_backoff(60, 1, "creating ebs volume") do 
+      volume = ec2.volumes.create(block_info)
+    end
+
+    volume_available = test_with_backoff(120, 1, "check EBS volume available #{device_name} (#{volume.id})") do
+      volume.status == :available
+    end
+
+    # TODO: Handle when volume is still not available
+
+    # Attach volume
+    attachment = nil
+    run_with_backoff(60, 1, "attaching volume #{volume.id} to #{device_name}") do
+      attachment = volume.attach_to(instance, device_name)
+    end
+    volume_attached = test_with_backoff(60, 1, "check EBS volume attached #{device_name} (#{volume.id})") do
+      attachment.status == :attached
+    end
+
+    # TODO: Handle when volume fails to attachment
+
+    volume
+  end
+
   def setup_ebs_volumes(instance_data)
     # Install mdadm if we have any RAID devices
     raid_required = false
-    instance_data["block_devices"].each do |block_device_json|
-      unless block_device_json["raid_level"].nil?
+    instance_data["block_devices"].each do |block_device|
+      unless block_device.raid_level.nil?
         raid_required = true
         break
       end
@@ -278,46 +318,25 @@ EOF
       puts "Setup requires EBS volumes with provisioned IOPS."
       
       ec2 = AWS::EC2.new
-      instance_id = `wget -T 5 -q -O - http://169.254.169.254/latest/meta-data/instance-id`
-      
+      instance = ec2.instances[@INSTANCE_ID]
+
+      block_creation_threads = []
       AWS.memoize do
-        instance = ec2.instances[instance_id]
-
-        volumes = {}
         instance_data["block_device_mappings"].keys.sort.each do |device_name|
-          block_info = instance_data["block_device_mappings"][device_name]
-          next if block_info =~ /^ephemeral/
+          block_data = instance_data["block_device_mappings"][device_name]
+          next if block_data =~ /^ephemeral/
 
-          block_info[:availability_zone] = AZ
-
-          # Create volume
-          block_device_text = "Creating EBS volume: #{device_name}, #{block_info[:volume_size]}GB, "
-          block_device_text += "#{block_info[:snapshot_id]}" if block_info[:snapshot_id]
-          block_device_text += "(#{block_info[:iops].nil? ? 'standard' : block_info[:iops].to_s} IOPS)"
-          puts block_device_text
-          volume = nil
-          run_with_backoff(60, 1, "creating ebs volume") do 
-            volume = ec2.volumes.create(block_info)
-          end
-
-          volume_available = test_with_backoff(120, 1, "waiting on EBS volume #{device_name}") do
-            volume.status == :available
-          end
-
-          # TODO: Handle when volume is still not available
-
-          # Attach volume
-          attachment = nil
-          run_with_backoff(60, 1, "attaching volume #{volume.id} to #{device_name}") do
-            attachment = volume.attach_to(instance, device_name)
-          end
-          volume_attached = test_with_backoff(60, 1, "waiting for #{volume.id}") do
-            attachment.status == :attached
-          end
-
-          # TODO: Handle when volume fails to attachment
-
-          volumes[device_name] = volume
+          block_creation_threads << Thread.new {
+            volume = create_attach_volume(ec2, instance, device_name, block_data)
+            Thread.current["device_name"] = device_name
+            Thread.current["volume"] = volume
+          }
+        end
+        
+        volumes = {}
+        block_creation_threads.each do |t|
+          t.join
+          volumes[t["device_name"]] = t["volume"]
         end
 
         block_device_builder = EC2Launcher::BlockDeviceBuilder.new(ec2, 60)
@@ -328,8 +347,8 @@ EOF
             block_device_tags.keys.each do |device_name|
               volume = volumes[device_name]
               block_device_tags[device_name].keys.each do |tag_name|
-                run_with_backoff(30, 1, "tag #{volume.id}, tag: #{tag_name}, value: #{block_device_tags[device][tag_name]}") do
-                  volume.add_tag(tag_name, :value => block_device_tags[device][tag_name])
+                run_with_backoff(30, 1, "tag #{volume.id}, tag: #{tag_name}, value: #{block_device_tags[device_name][tag_name]}") do
+                  volume.add_tag(tag_name, :value => block_device_tags[device_name][tag_name])
                 end
               end
             end

@@ -271,8 +271,15 @@ EOF
     run_with_backoff(60, 1, "attaching volume #{volume.id} to #{device_name}") do
       attachment = volume.attach_to(instance, device_name)
     end
+
     volume_attached = test_with_backoff(60, 1, "check EBS volume attached #{device_name} (#{volume.id})") do
-      attachment.status == :attached
+      attatched = false
+      begin
+        attached = attachment.status == :attached
+      rescue AWS::Core::Resource::NotFound
+        # This can occur when trying to access the attachment. Not sure how or why. Best to retry.
+      end
+      attached
     end
 
     # TODO: Handle when volume fails to attach

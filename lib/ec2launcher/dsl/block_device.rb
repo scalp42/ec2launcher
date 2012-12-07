@@ -19,10 +19,22 @@ module EC2Launcher
 			dsl_accessor :size
 			dsl_accessor :iops
 
-			def initialize()
-				@count = 1
-				@group = "root"
-				@user = "root"
+			def initialize(option_hash = nil)
+				if option_hash
+					@name = option_hash["name"]
+					@count = option_hash["count"]
+					@size = option_hash["size"]
+					@iops = option_hash["iops"]
+					@raid_level = option_hash["raid_level"]
+					@mount = option_hash["mount_point"]
+					@owner = option_hash["owner"]
+					@group = option_hash["group"]
+				end
+
+				# Default values
+				@count ||= 1
+				@group ||= "root"
+				@user ||= "root"
 			end
 
 			def is_raid?()

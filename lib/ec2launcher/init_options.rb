@@ -23,6 +23,7 @@ SYNOPSIS
   ec2launcher [global options] command [command options] [command arguments]
 
 COMMANDS
+  help        - Get information about a command.
   init        - Initialize a new environment/application repository.
   launch      - Launch a new instance.
   terminate   - Terminates an instance.
@@ -133,6 +134,16 @@ EOH
         opts.on("--volume-size SIZE", Integer, "EBS volume size in GB. Defaults to #{EC2Launcher::DEFAULT_VOLUME_SIZE} GB") do |volume_size|
           @options.volume_size = volume_size
         end
+
+        opts.separator ""
+        opts.separator "Miscellaneous:"
+
+        # No argument, shows at tail.  This will print an options summary.
+        # Try it and see!
+        opts.on_tail("-?", "--help", "Show this message") do
+          puts opts
+          exit
+        end    
       end
     end
 
@@ -143,6 +154,16 @@ EOH
         opts.on("--[no-]snapshot-removal", "Remove EBS snapshots. Defaults to TRUE.") do |removal|
           @options.snapshot_removal = removal
         end
+
+        opts.separator ""
+        opts.separator "Miscellaneous:"
+
+        # No argument, shows at tail.  This will print an options summary.
+        # Try it and see!
+        opts.on_tail("-?", "--help", "Show this message") do
+          puts opts
+          exit
+        end    
       end
     end
 
@@ -180,13 +201,24 @@ EOH
       @options.directory = "./"
 
       # Parse global options
-      @global_options.order!
+      begin
+        @global_options.order!
+      rescue OptionParser::InvalidOption
+        puts "Missing command!"
+        puts @global_options
+        exit 1
+      end
+
+      if ARGV.size < 1
+        puts @global_options
+        exit 1
+      end
 
       # Extract the request command
       @command = ARGV.shift.downcase
 
       unless SUB_COMMANDS.include?(@command)
-        puts "Missing command! " if @command.nil?
+        puts "Missing command!" if @command.nil?
         puts "Invalid command: #{@command}" unless @command.nil? || @command == "-?" || @command == "--help" || @command == "help"
         puts @global_options
         exit 1
@@ -208,7 +240,13 @@ EOH
       end
 
       # Parse sub command options
-      @subcommands[@command].order! if @subcommands.has_key?(@command)
+      begin
+        @subcommands[@command].order! if @subcommands.has_key?(@command)
+      rescue OptionParser::InvalidOption
+        puts "Invalid option!"
+        puts @global_options
+        exit 1
+      end
 
       if @command == "init"
         unless args.length >= 1

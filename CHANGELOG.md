@@ -1,3 +1,8 @@
+## 1.5.2
+
+* Use local copies of runurl, setup.rb and setup_instance.rb instead of pulling them down from GitHub every time.
+* Fixed CLI help.
+
 ## 1.5.1
 
 * Fixed bug with processing environment aliases.

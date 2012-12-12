@@ -10,7 +10,6 @@ require 'json'
 require 'ec2launcher'
 
 SETUP_SCRIPT = "setup_instance.rb"
-SETUP_SCRIPT_URL = "https://raw.github.com/StudyBlue/ec2launcher/master/startup-scripts//#{SETUP_SCRIPT}"
 
 class InitOptions
 	def initialize
@@ -153,8 +152,7 @@ puts "Connecting to Chef ..."
 puts `#{chef_path}`
 
 # Retrieve secondary setup script and run it
-puts "Getting role setup script ..."
-puts `s3curl.pl --id startup #{SETUP_SCRIPT_URL} > /tmp/#{SETUP_SCRIPT} && chmod +x /tmp/#{SETUP_SCRIPT}`
+puts "Launching role setup script ..."
 command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{options.hostname} #{setup_json_filename}"
 command += " -c #{options.clone_host}" unless options.clone_host.nil?
 command += " 2>&1 > /var/log/cloud-init.log"

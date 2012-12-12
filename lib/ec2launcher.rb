@@ -41,8 +41,12 @@ module EC2Launcher
     include BackoffRunner
 
     def initialize()
+      spec = Gem::Specification.find_by_name("ec2launcher")
+      @gem_install_dir = spec.gem_dir
+      @startup_scripts_dir = File.join(@gem_install_dir, "startup-scripts")
       @run_url_script_cache = nil
       @setup_script_cache = nil
+      @setup_instance_script_cache = nil
 
       @log = Logger.new 'ec2launcher'
       log_output = Outputter.stdout
@@ -682,6 +686,11 @@ module EC2Launcher
       cmd
     end
 
+    def load_and_encode_file(base_path, filename)
+      pathname = File.join(base_path, filename)
+      `cat #{pathname} |gzip -f |base64`
+    end
+
     # Builds the launch scripts that should run on the new instance.
     #
     # launch_options = {
@@ -763,13 +772,15 @@ EOF
 
       unless @options.skip_setup
         if @run_url_script_cache.nil?
-          puts "Downloading runurl script from #{RUN_URL_SCRIPT}"
-          @run_url_script_cache = `curl -s #{RUN_URL_SCRIPT} |gzip -f |base64`
+          @run_url_script_cache = load_and_encode_file(@startup_scripts_dir, "runurl")
         end
 
         if @setup_script_cache.nil?
-          puts "Downloading setup script from #{SETUP_SCRIPT}"
-          @setup_script_cache = `curl -s #{SETUP_SCRIPT} |gzip -f |base64`
+          @setup_script_cache = load_and_encode_file(@startup_scripts_dir, "setup.rb")
+        end
+
+        if @setup_instance_script_cache.nil?
+          @setup_instance_script_cache = load_and_encode_file(@startup_scripts_dir, "setup_instance.rb")
         end
 
         # runurl script
@@ -777,18 +788,26 @@ EOF
         user_data += @run_url_script_cache
         user_data += "End-Of-Message"
 
-        # setup script
+        # setup scripts
         user_data += "\ncat > /tmp/setup.rb.gz.base64 <<End-Of-Message2\n"
         user_data += @setup_script_cache
         user_data += "End-Of-Message2"
 
+        user_data += "\ncat > /tmp/setup_instance.rb.gz.base64 <<End-Of-Message3\n"
+        user_data += @setup_instance_script_cache
+        user_data += "End-Of-Message3"
+
         user_data += "\nbase64 -d /tmp/runurl.gz.base64 | gunzip > /tmp/runurl"
         user_data += "\nchmod +x /tmp/runurl"
-        # user_data += "\nrm -f /tmp/runurl.gz.base64"
+        user_data += "\nrm -f /tmp/runurl.gz.base64"
 
         user_data += "\nbase64 -d /tmp/setup.rb.gz.base64 | gunzip > /tmp/setup.rb"
         user_data += "\nchmod +x /tmp/setup.rb"
-        # user_data += "\nrm -f /tmp/setup.rb.gz.base64"
+        user_data += "\nrm -f /tmp/setup.rb.gz.base64"
+
+        user_data += "\nbase64 -d /tmp/setup_instance.rb.gz.base64 | gunzip > /tmp/setup_instance.rb"
+        user_data += "\nchmod +x /tmp/setup_instance.rb"
+        user_data += "\nrm -f /tmp/setup_instance.rb.gz.base64"
 
         user_data += "\ngem install ec2launcher --no-ri --no-rdoc"
 

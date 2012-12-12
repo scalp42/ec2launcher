@@ -1,3 +1,7 @@
+## 1.5.1
+
+* Fixed bug with processing environment aliases.
+
 ## 1.5.0
 
 * Initial support for Provisioned IOPS for EBS volumes.

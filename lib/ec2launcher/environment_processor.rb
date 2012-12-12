@@ -28,7 +28,6 @@ module EC2Launcher
           validate_environment(filename, new_env)
 
           @environments[new_env.name] = new_env
-          new_env.aliases.each {|env_alias| @environments[env_alias] = new_env }
         end
       end
 
@@ -36,6 +35,11 @@ module EC2Launcher
       @environments.values.each do |env|
         new_env = process_environment_inheritance(env)
         @environments[new_env.name] = new_env
+      end
+
+      # Process aliases
+      @environments.values.each do |env|
+        env.aliases.each {|env_alias| @environments[env_alias] = env }
       end
     end
 

@@ -18,6 +18,7 @@ module EC2Launcher
 			dsl_accessor :raid_level
 			dsl_accessor :size
 			dsl_accessor :iops
+			dsl_accessor :block_ra
 
 			def initialize(option_hash = nil)
 				if option_hash
@@ -29,6 +30,7 @@ module EC2Launcher
 					@mount = option_hash["mount_point"]
 					@owner = option_hash["owner"]
 					@group = option_hash["group"]
+					@block_ra = option_hash["block_ra"]
 				end
 
 				# Default values
@@ -56,7 +58,8 @@ module EC2Launcher
 						"raid_level" => @raid_level,
 						"mount_point" => @mount,
 						"owner" => @owner,
-						"group" => @group
+						"group" => @group,
+						"block_ra" => @block_ra
 					}
 				}
 			end

@@ -1,3 +1,7 @@
+## 1.6.0
+
+* Added option to set block device read-ahead value.
+
 ## 1.5.2
 
 * Use local copies of runurl, setup.rb and setup_instance.rb instead of pulling them down from GitHub every time.

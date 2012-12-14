@@ -375,6 +375,11 @@ EOF
           partition_devices([ "/dev/#{next_device_name}" ])
           format_filesystem(@system_arch, "/dev/#{next_device_name}1")
         end
+        
+        if block_device.respond_to?(:block_ra) && block_device.block_ra
+          set_block_read_ahead("/dev/#{next_device_name}1", block_device.block_ra)
+        end
+
         mount_device("/dev/#{next_device_name}1", block_device.mount, block_device.owner, block_device.group, @default_fs_type)
         next_device_name.next!
       else
@@ -385,9 +390,22 @@ EOF
         end
         puts "Setting up attached raid array... system_arch = #{@system_arch}, raid_devices = #{raid_devices}, device = /dev/md#{(127 - raid_array_count).to_s}"
         raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! @options.clone_host.nil?)
+        
+        if block_device.respond_to?(:block_ra) && block_device.block_ra
+          raid_devices.each {|device_name| set_block_read_ahead("#{device_name}1", block_device.read_ahead) }
+          set_block_read_ahead(raid_device_name, block_device.block_ra)
+        end
+
         mount_device(raid_device_name, block_device.mount, block_device.owner, block_device.group, @default_fs_type)
         raid_array_count += 1
       end
+    end
+  end
+
+  def set_block_read_ahead(device_name, read_ahead = nil)
+    if read_ahead
+      puts "Setting block device read ahead to #{read_ahead} for #{device_name}"
+      puts `blockdev --setra #{read_ahead} #{device_name}`
     end
   end
 

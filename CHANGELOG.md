@@ -1,3 +1,7 @@
+## 1.6.2
+
+* Fixed bug launching VPC instances.
+
 ## 1.6.1
 
 * Added option to force termination of an instance, even if the environment tag is missing.

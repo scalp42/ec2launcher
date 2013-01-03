@@ -600,7 +600,7 @@ module EC2Launcher
         end
 
         launch_mapping[:iam_instance_profile] = launch_options[:iam_profile] if launch_options[:iam_profile]
-        launch_mapping[:subnet] = launch_options[:vpc_subnet] if launch_options[:vpc_subnet]
+        launch_mapping[:subnet] = launch_options[:subnet] if launch_options[:subnet]
 
         new_instance = @ec2.instances.create(launch_mapping)
       end

@@ -154,6 +154,9 @@ EOH
         opts.on("--[no-]snapshot-removal", "Remove EBS snapshots. Defaults to TRUE.") do |removal|
           @options.snapshot_removal = removal
         end
+        opts.on("-f", "--[no-]force", "Force termination even if missing environment. Defaults to FALSE.") do |force|
+          @options.force = true
+        end
 
         opts.separator ""
         opts.separator "Miscellaneous:"
@@ -195,6 +198,7 @@ EOH
       @options.volume_size = nil
 
       @options.snapshot_removal = true
+      @options.force = false
 
       @options.verbosity = :normal
 

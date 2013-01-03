@@ -35,7 +35,8 @@ module EC2Launcher
     # @param[String] access_key Amazon IAM access key
     # @param[String] secret Amazon IAM secret key
     # @param[Boolean] snapshot_removal Remove EBS snapshots for EBS volumes attached to the instance.
-    def terminate(server_name, access_key, secret, snapshot_removal = true)
+    # @param[Boolean] force Force instance termination even if environment is not found.
+    def terminate(server_name, access_key, secret, snapshot_removal = true, force = false)
       ##############################
       # Initialize AWS and create EC2 connection
       ##############################
@@ -59,24 +60,31 @@ module EC2Launcher
       if instance
         environment_name = nil
         AWS.memoize do
-          environment_name = instance.tags["environment"].strip
+          environment_name = instance.tags["environment"].strip if instance.tags["environment"]
         end
 
         ##############################
         # ENVIRONMENT
         ##############################
-        unless @environments.has_key? environment_name
+        if environment_name.nil? && ! force
+          @log.fatal "No environment tag found for host. Use the --force option to override and terminate."
+          exit 3
+        end
+
+        if (! @environments.has_key?(environment_name)) && (! force)
           @log.fatal "Environment not found: '#{environment_name}'"
           exit 2
         end
-        @environment = @environments[environment_name]
+        @environment = @environments[environment_name] if environment_name
 
         ##############################
         # Create Route53 connection
         ##############################
         aws_route53 = nil
-        aws_route53 = AWS::Route53.new if @environment.route53_zone_id
-        route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
+        if @environment && @environment.route53_zone_id
+          aws_route53 = AWS::Route53.new
+          route53 = EC2Launcher::Route53.new(aws_route53, @environment.route53_zone_id, @log)
+        end
 
         ##############################
         # EBS Volumes

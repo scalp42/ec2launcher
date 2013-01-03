@@ -1,3 +1,8 @@
+## 1.6.1
+
+* Added option to force termination of an instance, even if the environment tag is missing.
+* Added block device configuration option to set block read-ahead values when setting up an EBS volume.
+
 ## 1.6.0
 
 * Added option to set block device read-ahead value.

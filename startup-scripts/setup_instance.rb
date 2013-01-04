@@ -392,7 +392,7 @@ EOF
         raid_device_name = setup_attached_raid_array(@system_arch, raid_devices, "/dev/md#{(127 - raid_array_count).to_s}", block_device.raid_level.to_i, ! @options.clone_host.nil?)
         
         if block_device.respond_to?(:block_ra) && block_device.block_ra
-          raid_devices.each {|device_name| set_block_read_ahead("#{device_name}1", block_device.read_ahead) }
+          raid_devices.each {|device_name| set_block_read_ahead("#{device_name}1", block_device.block_ra) }
           set_block_read_ahead(raid_device_name, block_device.block_ra)
         end
 

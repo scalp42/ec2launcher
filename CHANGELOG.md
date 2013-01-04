@@ -1,3 +1,7 @@
+## 1.6.3
+
+* Fixed typo in block read-ahead settings.
+
 ## 1.6.2
 
 * Fixed bug launching VPC instances.

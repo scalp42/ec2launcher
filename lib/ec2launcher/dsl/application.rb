@@ -215,6 +215,17 @@ module EC2Launcher
 					end
 				end
 
+				unless other_server.environment_roles.nil?
+					@environment_roles = Hash.new if @environment_roles.nil?
+					other_server.environment_roles.keys.each do |env_name|
+						if @environment_roles.has_key?(env_name)
+							@environment_roles[env_name] = other_server.environment_roles[env_name] + @environment_roles[env_name]
+						else
+							@environment_roles[env_name] = other_server.environment_roles[env_name]
+						end
+					end
+				end
+
 				@use_rvm = other_server.use_rvm if other_server.use_rvm
 			end
 

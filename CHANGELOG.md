@@ -1,3 +1,7 @@
+## 1.6.4
+
+* Fixed bug with properly inheriting environment roles in applications.
+
 ## 1.6.3
 
 * Fixed typo in block read-ahead settings.

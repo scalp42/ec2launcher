@@ -443,8 +443,11 @@ EOF
   # Creates a mount point, mounts the device and adds it to fstab
   def mount_device(device, mount_point, owner, group, fs_type)
     puts `echo #{device} #{mount_point} #{fs_type} noatime 0 0|tee -a /etc/fstab`
+    puts "Making mount directory #{mount_point} for #{device}"
     puts `mkdir -p #{mount_point}`
+    puts "Mounting #{device} at #{mount_point}"
     puts `mount #{mount_point}`
+    puts "Setting ownership on #{mount_point} to #{owner}"
     puts `chown #{owner}:#{owner} #{mount_point}`
   end
 

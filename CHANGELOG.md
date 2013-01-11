@@ -1,3 +1,8 @@
+## 1.6.5
+
+* Make more methods of BlockDeviceBuilder public.
+* Minor changes to log4r configuration to improve reusability.
+
 ## 1.6.4
 
 * Fixed bug with properly inheriting environment roles in applications.

@@ -5,8 +5,6 @@ require 'ec2launcher/defaults'
 require 'ec2launcher/backoff_runner'
 require 'log4r'
 
-include Log4r
-
 module EC2Launcher
   # Helper class to build EC2 block device definitions.
   #
@@ -86,8 +84,6 @@ module EC2Launcher
       block_device_tags
     end
 
-    private
-  
     # Iterates over a number of block_devices, executing the specified Ruby block.
     #
     # @param [Integer] count number of block devices
@@ -95,6 +91,7 @@ module EC2Launcher
     #        Incremented for each iteration.
     # @param [Block] block block to execute. Passes in the current device name and zero-based index.
     #
+    private
     def build_block_devices(count, device = "sdf", &block)
       device_name = device
       0.upto(count - 1).each do |index|
@@ -108,6 +105,7 @@ module EC2Launcher
     # @param [Hash<String, Hash>] block_device_mappings Mapping of device names to EBS block device details.
     # @param [Array<EC2Launcher::BlockDevice>] block_devices list of block devices to create.
     #
+    private
     def build_ebs_volumes(block_device_mappings, block_devices)
       return if block_devices.nil?
       base_device_name = "sdf"
@@ -131,6 +129,7 @@ module EC2Launcher
     # @param [Hash<String, Hash>] block_devices Map of device names to EC2 block device details.
     # @param [String] instance_type type of instance. See EC2Launcher::Defaults::INSTANCE_TYPES.
     #
+    private
     def build_ephemeral_drives(block_device_mappings, instance_type)
       ephemeral_drive_count = case instance_type
         when "m1.small" then 1
@@ -159,6 +158,7 @@ module EC2Launcher
     # @param [EC2Launcher::Application] application current application
     # @param [String] clone_host name of host to clone
     #
+    private
     def clone_volumes(block_device_mappings, application, clone_host = nil)
       return if clone_host.nil?
 
@@ -183,12 +183,12 @@ module EC2Launcher
       AWS.stop_memoizing
     end
 
-    private
     # @param [String] purpose purpose of RAID array, which is stored in the `purpose` tag for snapshots/volumes
     #        and is part of the snapshot name.
     # @param [AWS::EC2::SnapshotCollection] snapshots collection of snapshots to examine
     #
     # @return [Array<AWS::EC2::Snapshot>] list of matching snapshots
+    private
     def build_snapshot_clone_list(purpose, snapshots)
       snapshot_name_regex = /#{purpose} raid.*/
       host_snapshots = []
@@ -206,11 +206,11 @@ module EC2Launcher
       host_snapshots
     end
 
-    private
     # Creates a mapping of volume numbers to snapshots.
     #
     # @param [Array<AWS::EC2::Snapshot>] snapshots list of matching snapshots
     # @result [Hash<String, AWS::EC2::Snapshot>] map of volume numbers as strings  ("1", "2", etc.) to snapshots
+    private
     def bucket_snapshots_by_volume_number(snapshots)
       snapshot_buckets = { }
       volume_number_regex = /raid \((\d)\)$/
@@ -233,10 +233,10 @@ module EC2Launcher
       snapshot_buckets
     end
 
-    private
     # Find the most recent backup time that all snapshots have in common.
     #
     # @param [Hash<String, AWS::EC2::Snapshot>] snapshot_buckets map of volume numbers as strings  ("1", "2", etc.) to snapshots
+    public
     def get_most_recent_common_snapshot_time(snapshot_buckets)
       # We need to find the most recent backup time that all snapshots have in common.
       #
@@ -261,7 +261,6 @@ module EC2Launcher
       most_recent_dates[0]
     end
 
-    public
     # Retrieves the latest set of completed snapshots for a RAID array of EBS volumes.
     #
     # Volumes must have the following tags:
@@ -276,12 +275,12 @@ module EC2Launcher
     #
     # @return [Hash<Integer, AWS::EC2::Snapshot>] mapping of RAID device numbers (zero based) to AWS Snapshots.
     #
+    public
     def get_latest_raid_snapshot_mapping(hostname, purpose, count)
       @log.info "Retrieving list of snapshots ..."
       result = @ec2.snapshots.tagged("host").tagged_values(hostname).tagged("volumeName").tagged_values("*raid*").tagged("time")
 
       @log.info "Building list of snapshots to clone (#{purpose}) for '#{hostname}'..."
-      snapshot_name_regex = /#{purpose} raid.*/
       host_snapshots = build_snapshot_clone_list(purpose, result)
 
       # Bucket the snapshots based on volume number e.g. "raid (1)" vs "raid (2)"
@@ -326,6 +325,7 @@ module EC2Launcher
     #
     # @return [AWS::EC2::Snapshot, nil] matching snapshot or nil if no matching snapshot
     #
+    public
     def get_latest_snapshot_by_purpose(clone_host, purpose)
       @log.info "Retrieving snapshtos for #{clone_host} [#{purpose}]"
       results = @ec2.snapshots.tagged("host").tagged_values(clone_host).tagged("purpose").tagged_values(purpose)

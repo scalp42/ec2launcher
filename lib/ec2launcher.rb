@@ -23,8 +23,6 @@ require 'ec2launcher/route53'
 
 require 'ec2launcher/config_wrapper'
 
-include Log4r
-
 module EC2Launcher
 
   class AmiDetails
@@ -48,12 +46,19 @@ module EC2Launcher
       @setup_script_cache = nil
       @setup_instance_script_cache = nil
 
-      @log = Logger.new 'ec2launcher'
-      log_output = Outputter.stdout
-      log_output.formatter = PatternFormatter.new :pattern => "%m"
-      @log.outputters = log_output
+      begin
+        @log = Log4r::Logger['ec2launcher']
+        unless @log
+          @log = Log4r::Logger.new 'ec2launcher'
+          log_output = Log4r::Outputter.stdout
+          log_output.formatter = PatternFormatter.new :pattern => "%m"
+          @log.outputters = log_output
+        end
+      rescue
+      end
     end
 
+    public
     def launch(options)
       @options = options
 
@@ -434,7 +439,8 @@ module EC2Launcher
       ##############################
       # COMPLETED
       ##############################
-      @log.info "********************"    
+      @log.info "********************"
+      instances
     end
 
     # Attaches an instance to the specified ELB.
@@ -542,6 +548,7 @@ module EC2Launcher
     #
     # @return [String] DNS for the instance or "n/a" if undefined.
     #
+    public
     def get_instance_dns(ec2_instance, public = true)
       dns_name = public ? ec2_instance.public_dns_name : ec2_instance.private_dns_name
       dns_name.nil? ? "n/a" : dns_name
@@ -570,6 +577,7 @@ module EC2Launcher
     # }
     #
     # @return [AWS::EC2::Instance] newly created EC2 instance or nil if the launch failed.
+    public
     def launch_instance(launch_options, user_data)
       @log.warn "Launching instance... #{launch_options[:fqdn]}"
       new_instance = nil

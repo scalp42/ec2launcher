@@ -1,3 +1,7 @@
+## 1.6.6
+
+* Fixed bug with handling missing security groups in VPCs.
+
 ## 1.6.5
 
 * Make more methods of BlockDeviceBuilder public.

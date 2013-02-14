@@ -183,8 +183,11 @@ module EC2Launcher
       security_group_ids = []
       missing_security_groups = []
       security_groups.each do |sg_name|
-        missing_security_groups << sg_name unless sg_map.has_key?(sg_name)
-        security_group_ids << sg_map[sg_name].security_group_id
+        if sg_map.has_key?(sg_name)
+          security_group_ids << sg_map[sg_name].security_group_id
+        else
+          missing_security_groups << sg_name
+        end
       end
 
       if missing_security_groups.length > 0

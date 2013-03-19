@@ -1,3 +1,8 @@
+## 1.6.7
+
+* Fixed iam_profile inheritance for applications.
+* Fixed default security group inheritance for applications.
+
 ## 1.6.6
 
 * Fixed bug with handling missing security groups in VPCs.

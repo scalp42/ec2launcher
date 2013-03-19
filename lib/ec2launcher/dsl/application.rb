@@ -199,6 +199,13 @@ module EC2Launcher
 				@iam_profile = other_server.iam_profile if other_server.iam_profile
 				@instance_type = other_server.instance_type if other_server.instance_type
 				@name_suffix = other_server.name_suffix if other_server.name_suffix
+
+				if other.iam_profile
+					@iam_profile = {} if @iam_profile.nil?
+					other.iam_profile.keys.each do |env_name|
+						@iam_profile[env_name] = other.iam_profile[env_name]
+					end
+				end
 				
 				unless other_server.roles.nil?
 					@roles = [] if @roles.nil?
@@ -248,6 +255,7 @@ module EC2Launcher
 			def security_groups_for_environment(environment)
 				groups = @security_groups[environment]
 				groups ||= @security_groups[:default]
+				groups ||= @security_groups["default"]
 				groups ||= []
 				groups
 			end

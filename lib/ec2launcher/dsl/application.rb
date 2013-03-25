@@ -200,10 +200,10 @@ module EC2Launcher
 				@instance_type = other_server.instance_type if other_server.instance_type
 				@name_suffix = other_server.name_suffix if other_server.name_suffix
 
-				if other.iam_profile
+				if other_server.iam_profile
 					@iam_profile = {} if @iam_profile.nil?
-					other.iam_profile.keys.each do |env_name|
-						@iam_profile[env_name] = other.iam_profile[env_name]
+					other_server.iam_profile.keys.each do |env_name|
+						@iam_profile[env_name] = other_server.iam_profile[env_name]
 					end
 				end
 				

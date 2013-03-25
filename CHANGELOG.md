@@ -1,3 +1,11 @@
+## 1.6.9
+
+* Fixed bug where ec2launcher failed to attached ephemeral drives if the application used EBS volumes with provisioned IOPS.
+
+## 1.6.8
+
+* Fixed typo.
+
 ## 1.6.7
 
 * Fixed iam_profile inheritance for applications.

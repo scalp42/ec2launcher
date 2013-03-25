@@ -598,7 +598,7 @@ module EC2Launcher
             # Only include ephemeral devices if we're using provisioned IOPS for the EBS volumes
             launch_mapping[:block_device_mappings] = {}
             launch_options[:block_device_mappings].keys.sort.each do |block_device_name|
-              if block_device_name =~ /^ephemeral/
+              if launch_options[:block_device_mappings][block_device_name] =~ /^ephemeral/
                 launch_mapping[:block_device_mappings][block_device_name] = launch_options[:block_device_mappings][block_device_name]
               end
             end

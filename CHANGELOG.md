@@ -1,3 +1,11 @@
+## 1.6.12
+
+* More fixes for handling block devices on startup.
+
+## 1.6.11
+
+* Fixed two additional small typos with handling block devices in raid arrays on startup.
+
 ## 1.6.10
 
 * Fixed small typo with handling block devices in raid arrays on startup.

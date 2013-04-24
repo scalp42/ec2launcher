@@ -1,3 +1,7 @@
+## 1.6.10
+
+* Fixed small typo with handling block devices in raid arrays on startup.
+
 ## 1.6.9
 
 * Fixed bug where ec2launcher failed to attached ephemeral drives if the application used EBS volumes with provisioned IOPS.

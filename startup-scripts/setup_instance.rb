@@ -291,7 +291,7 @@ EOF
     # Install mdadm if we have any RAID devices
     raid_required = false
     instance_data["block_devices"].each do |block_device|
-      unless block_device.raid_level.nil?
+      unless block_device["raid_level"].nil?
         raid_required = true
         break
       end

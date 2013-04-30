@@ -1,3 +1,11 @@
+## 1.6.14
+
+* Undo block device changes.
+
+## 1.6.13
+
+* Even more fixes for handling block devices on startup.
+
 ## 1.6.12
 
 * More fixes for handling block devices on startup.

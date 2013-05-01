@@ -108,7 +108,8 @@ class InstanceSetup
     initialize_aws(@AWS_ACCESS_KEY, @AWS_SECRET_ACCESS_KEY)
 
     # Read the setup JSON file
-    instance_data = JSON.parse(File.read(@setup_json_filename))
+    parser = JSON::Parser.new(File.read(@setup_json_filename), { :create_additions => true })
+    instance_data = parser.parse()
 
     ##############################
     # EBS VOLUMES

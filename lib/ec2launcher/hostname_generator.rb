@@ -5,26 +5,32 @@ require 'rubygems'
 require 'aws-sdk'
 
 require 'ec2launcher/backoff_runner'
+require 'ec2launcher/dynamic_hostname_generator'
+require 'ec2launcher/hostnames/host_name_generation'
 
 module EC2Launcher
   # Helper class to generate sequential, numbered host names
   class HostnameGenerator
     include BackoffRunner
+    include HostNames::HostNameGeneration
+
+    attr_reader :prefix
+    attr_reader :suffix
 
     # 
     # @param [AWS::EC2] ec2 EC2 object used to query for existing instances
     # @param [EC2Launcher::Environment] environment Environment to use for generating host names
-    # @param [EC2Launcher::Application] application Application to use for generating hostn ames
+    # @param [EC2Launcher::Application] application Application to use for generating host names
     def initialize(ec2, environment, application)
       @ec2 = ec2
-      @server_name_cache = nil
+        @server_name_cache = nil
 
       @prefix = application.basename
       @prefix ||= application.name
 
       @env_suffix = environment.short_name
       @env_suffix ||= environment.name
-      
+
       @suffix = @env_suffix
       unless application.name_suffix.nil?
         @suffix = "#{application.name_suffix}.#{@env_suffix}"
@@ -34,6 +40,27 @@ module EC2Launcher
 
       # Load and cache instance names
       load_instances(@prefix, @suffix)
+
+      @dynamic_generator = EC2Launcher::DynamicHostnameGenerator.new(@prefix, @suffix)
+    end
+
+    # Given an instance id, generates a dynamic short hostname typically in the form:
+    #
+    #   prefix + INSTANCE ID + application + environment
+    #
+    # Examples:
+    #   9803da2.web.prod (no prefix)   
+    #   app-d709aa2ab.server.dev (prefix = "app-")
+    #
+    # @param [String] instance_id   AWS EC2 instance id
+    #
+    def generate_dynamic_hostname(instance_id)
+      short_name = @dynamic_generator.generate_dynamic_hostname(instance_id)
+      
+      # Cache the new hostname
+      @server_name_cache << short_name
+
+      short_name
     end
 
     # Generates a new host name and automatically caches it
@@ -49,23 +76,6 @@ module EC2Launcher
       @server_name_cache << short_name
 
       short_name
-    end
-
-    def generate_long_name(short_hostname, domain_name = nil)
-      hostname = short_hostname
-      unless domain_name.nil?
-        hostname += ".#{domain_name}"
-      end
-
-      hostname
-    end
-
-    def generate_short_name(long_name, domain_name = nil)
-      short_hostname = long_name
-      unless domain_name.nil?
-        short_hostname = long_name.gsub(/.#{domain_name}/, '')
-      end
-      short_hostname
     end
 
     private

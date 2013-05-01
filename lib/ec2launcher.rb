@@ -241,36 +241,38 @@ module EC2Launcher
       ##############################
       # HOSTNAME
       ##############################
-      hostname_generator = EC2Launcher::HostnameGenerator.new(@ec2, @environment, @application)
+      @hostname_generator = EC2Launcher::HostnameGenerator.new(@ec2, @environment, @application)
       short_hostnames = []
       fqdn_names = []
-      if @options.count > 1
-        1.upto(@options.count).each do |i|
-          short_hostname = hostname_generator.generate_hostname()
-          long_hostname = hostname_generator.generate_long_name(short_hostname, @domain_name)
+      unless @options.dynamic_name
+        if @options.count > 1
+          1.upto(@options.count).each do |i|
+            short_hostname = @hostname_generator.generate_hostname()
+            long_hostname = @hostname_generator.generate_fqdn(short_hostname, @domain_name)
+            short_hostnames << short_hostname
+            fqdn_names << long_hostname
+          end
+        else
+          if @options.hostname.nil?
+            short_hostname = @hostname_generator.generate_hostname()
+            long_hostname = @hostname_generator.generate_fqdn(short_hostname, @domain_name)
+          else
+            long_hostname = @options.hostname
+            short_hostname = @hostname_generator.generate_short_name(long_hostname, @environment.domain_name)
+            if long_hostname == short_hostname
+              long_hostname = @hostname_generator.generate_fqdn(short_hostname, @environment.domain_name)
+            end
+          end
           short_hostnames << short_hostname
           fqdn_names << long_hostname
         end
-      else
-        if @options.hostname.nil?
-          short_hostname = hostname_generator.generate_hostname()
-          long_hostname = hostname_generator.generate_long_name(short_hostname, @domain_name)
-        else
-          long_hostname = @options.hostname
-          short_hostname = hostname_generator.generate_short_name(long_hostname, @environment.domain_name)
-          if long_hostname == short_hostname
-            long_hostname = hostname_generator.generate_long_name(short_hostname, @environment.domain_name)
-          end
-        end
-        short_hostnames << short_hostname
-        fqdn_names << long_hostname
       end
 
       ##############################
       # Block devices
       ##############################
-      block_device_builder = EC2Launcher::BlockDeviceBuilder.new(@ec2, @options.volume_size)
-      block_device_mappings = block_device_builder.generate_block_devices(instance_type, @environment, @application, @options.clone_host)
+      @block_device_builder = EC2Launcher::BlockDeviceBuilder.new(@ec2, @options.volume_size)
+      block_device_mappings = @block_device_builder.generate_block_devices(instance_type, @environment, @application, @options.clone_host)
 
       ##############################
       # ELB
@@ -341,8 +343,12 @@ module EC2Launcher
         @log.info "VPC Subnet          : #{subnet} (#{cidr_block})"
       end
       @log.info ""
-      fqdn_names.each do |fqdn|
-        @log.info "Name                : #{fqdn}"
+      if @options.dynamic_name
+          @log.info "Name                : **dynamic**"
+      else
+        fqdn_names.each do |fqdn|
+          @log.info "Name                : #{fqdn}"
+        end
       end
 
       unless block_device_mappings.empty?
@@ -387,19 +393,24 @@ module EC2Launcher
       }
 
       # Quit if we're only displaying the defaults
-      if @options.show_defaults || @options.show_user_data
-        if @options.show_user_data
-          user_data = build_launch_command(
-            launch_options.merge({
-              :fqdn => fqdn_names[0],
-              :short_name => short_hostnames[0]
-            })
-          )
-          @log.info ""
-          @log.info "---user-data---"
-          @log.info user_data
-          @log.info "---user-data---"
+      exit 0 if @options.show_defaults
+
+      if @options.show_user_data
+        custom_launch_options = launch_options
+        unless @options.dynamic_name
+          custom_launch_options = launch_options.merge({
+            :fqdn => fqdn_names[0],
+            :short_name => short_hostnames[0]
+          })
         end
+
+        user_data = build_launch_command(custom_launch_options)
+
+        @log.info ""
+        @log.info "---user-data---"
+        @log.info user_data
+        @log.info "---user-data---"
+
         exit 0
       end
 
@@ -408,11 +419,20 @@ module EC2Launcher
       ##############################
       @log.warn ""
       instances = []
-      fqdn_names.each_index do |i|
-        block_device_tags = block_device_builder.generate_device_tags(fqdn_names[i], short_hostnames[i], @environment.name, @application.block_devices)
+      new_instance_names = []
+      0.upto(@options.count).each do |i|
+        fqdn = nil
+        short_hostname = nil
+
+        unless @options.dynamic_name
+          fqdn = fqdn_names[i]
+          short_hostname = short_hostnames[i]
+        end
+
+        block_device_tags = @block_device_builder.generate_device_tags(fqdn, short_hostname, @environment.name, @application.block_devices)
         launch_options.merge!({
-          :fqdn => fqdn_names[i],
-          :short_name => short_hostnames[i],
+          :fqdn => fqdn,
+          :short_name => short_hostname,
           :block_device_tags => block_device_tags,
         })
         user_data = build_launch_command(launch_options)
@@ -420,16 +440,23 @@ module EC2Launcher
         instance = launch_instance(launch_options, user_data)
         instances << instance
 
+        if @options.dynamic_name
+          short_hostname = @hostname_generator.generate_dynamic_hostname(instance.id)
+          fqdn = @hostname_generator.generate_fqdn(short_hostname, @environment.domain_name)
+        end
+
         public_dns_name = get_instance_dns(instance, true)
         private_dns_name = get_instance_dns(instance, false)
-        @log.info "Launched #{fqdn_names[i]} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
+        @log.info "Launched #{fqdn} (#{instance.id}) [#{public_dns_name} / #{private_dns_name} / #{instance.private_ip_address} ]"
+
+        new_instance_names << fqdn
       end
 
       @log.info "********************"    
-      fqdn_names.each_index do |i|
+      new_instance_names.each_index do |i|
         public_dns_name = get_instance_dns(instances[i], true)
         private_dns_name = get_instance_dns(instances[i], false)
-        @log.warn "** New instance: #{fqdn_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
+        @log.warn "** New instance: #{new_instance_names[i]} | #{instances[i].id} | #{public_dns_name} | #{private_dns_name} | #{instances[i].private_ip_address}"
       end
 
       ##############################
@@ -633,6 +660,12 @@ module EC2Launcher
         exit 5
       end
 
+      if @options.dynamic_name
+        launch_options[:short_name] = @hostname_generator.generate_dynamic_hostname(instance.id)
+        launch_options[:fqdn] = @hostname_generator.generate_fqdn(launch_options[:short_name], @environment.domain_name)
+        launch_options[:block_device_tags] = @block_device_builder.generate_device_tags(launch_options[:fqdn], launch_options[:short_name], @environment.name, @application.block_devices)
+      end
+
       ##############################
       # Tag instance
       @log.info "Tagging instance..."
@@ -739,8 +772,15 @@ module EC2Launcher
         'aws_keyfile' => launch_options[:aws_keyfile],
         'gems' => launch_options[:gems],
         'packages' => launch_options[:packages],
-        'provisioned_iops' => false
+        'provisioned_iops' => false,
+        'dynamic_name' => @options.dynamic_name,
+        'domain_name' => @environment.domain_name
       }
+      if @options.dynamic_name
+        setup_json['dynamic_name_prefix'] = @hostname_generator.prefix
+        setup_json['dynamic_name_suffix'] = @hostname_generator.suffix
+      end
+
       setup_json["gem_path"] = @instance_paths.gem_path
       setup_json["ruby_path"] = @instance_paths.ruby_path
       setup_json["chef_path"] = @instance_paths.chef_path
@@ -762,10 +802,11 @@ module EC2Launcher
 
       ##############################
       # Build launch command
+      json_text = @options.pretty_print ? JSON.pretty_generate(setup_json) : setup_json.to_json
       user_data = <<EOF
 #!/bin/bash
 cat > /tmp/setup.json <<End-Of-Message-JSON
-#{setup_json.to_json}
+#{json_text}
 End-Of-Message-JSON
 EOF
       if @environment.use_rvm or @application.use_rvm

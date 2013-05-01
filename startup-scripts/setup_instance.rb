@@ -111,6 +111,15 @@ class InstanceSetup
     instance_data = JSON.parse(File.read(@setup_json_filename))
 
     ##############################
+    # HOST NAME
+    ##############################
+    if instance_data["dynamic_name"]
+      hostname_generator = EC2Launcher::DynamicHostnameGenerator.new(instance_data["dynamic_name_prefix"], instance_data["dynamic_name_suffix"])
+      instance_data["hostname"] = hostname_generator.generate_dynamic_hostname(@INSTANCE_ID)
+      instance_data["short_hostname"] = hostname_generator.generate_short_name(@hostname, instance_data["domain_name"])
+    end
+
+    ##############################
     # EBS VOLUMES
     ##############################
     @system_arch = `uname -p`.strip

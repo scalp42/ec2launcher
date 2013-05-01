@@ -1,3 +1,7 @@
+## 1.7.0
+
+* New optional naming convention that leverages the instance id instead of a sequential number.
+
 ## 1.6.14
 
 * Undo block device changes.

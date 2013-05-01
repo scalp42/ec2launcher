@@ -108,8 +108,16 @@ EOH
           @options.skip_setup = true
         end
 
+        opts.on("--pretty-print", "Use pretty format for JSON user-data. Defaults to off. Only recommended for testing.") do
+          @options.pretty_print = true
+        end
+
         opts.separator ""
         opts.separator "Launch overrides:"
+
+        opts.on("-d", "--dynamic-name", "Dynamically set the host name based on instance id.") do |dynamic_name|
+          @options.dynamic_name = dynamic_name
+        end
 
         opts.on("-h", "--hostname NAME", String, "The name for the new server.") do |hostname|
           @options.hostname = hostname
@@ -192,6 +200,7 @@ EOH
       @options.skip_setup = false
 
       @options.ami_id = nil
+      @options.dynamic_name = false
       @options.hostname = nil
       @options.zone = nil
       @options.instance_type = nil
@@ -200,6 +209,7 @@ EOH
       @options.snapshot_removal = true
       @options.force = false
 
+      @options.pretty_print = false
       @options.verbosity = :normal
 
       @options.directory = "./"

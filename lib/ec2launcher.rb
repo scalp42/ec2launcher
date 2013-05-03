@@ -420,7 +420,7 @@ module EC2Launcher
       @log.warn ""
       instances = []
       new_instance_names = []
-      0.upto(@options.count).each do |i|
+      0.upto(@options.count - 1).each do |i|
         fqdn = nil
         short_hostname = nil
 
@@ -661,7 +661,7 @@ module EC2Launcher
       end
 
       if @options.dynamic_name
-        launch_options[:short_name] = @hostname_generator.generate_dynamic_hostname(instance.id)
+        launch_options[:short_name] = @hostname_generator.generate_dynamic_hostname(new_instance.id)
         launch_options[:fqdn] = @hostname_generator.generate_fqdn(launch_options[:short_name], @environment.domain_name)
         launch_options[:block_device_tags] = @block_device_builder.generate_device_tags(launch_options[:fqdn], launch_options[:short_name], @environment.name, @application.block_devices)
       end
@@ -730,9 +730,13 @@ module EC2Launcher
       cmd
     end
 
-    def load_and_encode_file(base_path, filename)
-      pathname = File.join(base_path, filename)
+    def load_and_encode_file(pathname)
       `cat #{pathname} |gzip -f |base64`
+    end
+
+    def load_and_encode_file_with_path(base_path, filename)
+      pathname = File.join(base_path, filename)
+      load_and_encode_file(pathname)
     end
 
     # Builds the launch scripts that should run on the new instance.
@@ -777,8 +781,8 @@ module EC2Launcher
         'domain_name' => @environment.domain_name
       }
       if @options.dynamic_name
-        setup_json['dynamic_name_prefix'] = @hostname_generator.prefix
-        setup_json['dynamic_name_suffix'] = @hostname_generator.suffix
+        # setup_json['dynamic_name_prefix'] = @hostname_generator.prefix
+        setup_json['dynamic_name_suffix'] = "#{@hostname_generator.prefix}.#{@hostname_generator.suffix}"
       end
 
       setup_json["gem_path"] = @instance_paths.gem_path
@@ -824,15 +828,15 @@ EOF
 
       unless @options.skip_setup
         if @run_url_script_cache.nil?
-          @run_url_script_cache = load_and_encode_file(@startup_scripts_dir, "runurl")
+          @run_url_script_cache = load_and_encode_file_with_path(@startup_scripts_dir, "runurl")
         end
 
         if @setup_script_cache.nil?
-          @setup_script_cache = load_and_encode_file(@startup_scripts_dir, "setup.rb")
+          @setup_script_cache = load_and_encode_file_with_path(@startup_scripts_dir, "setup.rb")
         end
 
         if @setup_instance_script_cache.nil?
-          @setup_instance_script_cache = load_and_encode_file(@startup_scripts_dir, "setup_instance.rb")
+          @setup_instance_script_cache = load_and_encode_file_with_path(@startup_scripts_dir, "setup_instance.rb")
         end
 
         # runurl script
@@ -863,7 +867,9 @@ EOF
 
         user_data += "\ngem install ec2launcher --no-ri --no-rdoc"
 
-        user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name} -h #{launch_options[:fqdn]} /tmp/setup.json"
+        user_data += "\n#{setup_json['ruby_path']} /tmp/setup.rb -e #{@environment.name} -a #{@application.name}" 
+        user_data += " -h #{launch_options[:fqdn]}" if launch_options[:fqdn]
+        user_data += " /tmp/setup.json"
         user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
         user_data += " 2>&1 > /var/log/cloud-startup.log"
       end

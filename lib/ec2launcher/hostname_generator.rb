@@ -41,7 +41,7 @@ module EC2Launcher
       # Load and cache instance names
       load_instances(@prefix, @suffix)
 
-      @dynamic_generator = EC2Launcher::DynamicHostnameGenerator.new(@prefix, @suffix)
+      @dynamic_generator = EC2Launcher::DynamicHostnameGenerator.new(nil, "#{@prefix}.#{@suffix}")
     end
 
     # Given an instance id, generates a dynamic short hostname typically in the form:

@@ -139,12 +139,19 @@ puts "Retrieving Chef validation.pem ..."
 puts `s3curl.pl --id startup #{instance_data['chef_validation_pem_url']} > /etc/chef/validation.pem`
 
 # Setting hostname
-puts "Setting hostname ... #{options.hostname}"
-`hostname #{options.hostname}`
-`sed -i 's/^HOSTNAME=.*$/HOSTNAME=#{options.hostname}/' /etc/sysconfig/network`
+hostname = options.hostname
+if instance_data["dynamic_name"]
+  hostname_generator = EC2Launcher::DynamicHostnameGenerator.new(instance_data["dynamic_name_prefix"], instance_data["dynamic_name_suffix"])
+  short_hostname = hostname_generator.generate_dynamic_hostname(@INSTANCE_ID)
+  hostname = hostname_generator.generate_fqdn(short_hostname, instance_data["domain_name"])
+end
+
+puts "Setting hostname ... #{hostname}"
+`hostname #{hostname}`
+`sed -i 's/^HOSTNAME=.*$/HOSTNAME=#{hostname}/' /etc/sysconfig/network`
 
 # Set Chef node name
-File.open("/etc/chef/client.rb", 'a') { |f| f.write("node_name \"#{options.hostname}\"") }
+File.open("/etc/chef/client.rb", 'a') { |f| f.write("node_name \"#{hostname}\"") }
 
 # Setup Chef client
 puts "Connecting to Chef ..."
@@ -153,7 +160,7 @@ puts `#{chef_path}`
 
 # Retrieve secondary setup script and run it
 puts "Launching role setup script ..."
-command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{options.hostname} #{setup_json_filename}"
+command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{hostname} #{setup_json_filename}"
 command += " -c #{options.clone_host}" unless options.clone_host.nil?
 command += " 2>&1 > /var/log/cloud-init.log"
 run_command(command)

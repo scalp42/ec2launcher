@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+require 'rake'
 require File.expand_path('../lib/ec2launcher/version', __FILE__)
 
 Gem::Specification.new do |gem|
@@ -9,14 +10,15 @@ Gem::Specification.new do |gem|
 
   gem.license       = "Apache 2.0"
 
-  gem.files         = `git ls-files`.split($\)
+  # gem.files         = `git ls-files`.split($\)
+  gem.files         = FileList['lib/**/*.rb', 'bin/**/*.rb', '[A-Z]*', 'test/**/*.rb'].to_a
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
-  gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
+  gem.test_files    = FileList['test/**/*.rb'].to_a
   gem.name          = "ec2launcher"
   gem.require_paths = ["lib"]
   gem.version       = EC2Launcher::VERSION
 
-  gem.add_runtime_dependency "aws-sdk", [">= 1.6.6"]
+  gem.add_runtime_dependency "aws-sdk", [">= 1.8.0"]
   gem.add_runtime_dependency "log4r"
 
   gem.add_development_dependency "minitest"

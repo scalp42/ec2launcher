@@ -1,4 +1,4 @@
-require "minitest/autorun"
+require_relative "../../test_helper"
 require 'ec2launcher/hostnames/host_name_generation'
 
 class HostNameGenerationSpecTest

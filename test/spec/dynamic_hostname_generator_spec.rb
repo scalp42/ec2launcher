@@ -1,4 +1,4 @@
-require "minitest/autorun"
+require_relative "../test_helper"
 require 'ec2launcher/dynamic_hostname_generator'
 
 describe "DynamicHostnameGenerator", "Dynamic host name generation" do

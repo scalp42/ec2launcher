@@ -1,4 +1,5 @@
 require_relative "../../test_helper"
+require 'ec2launcher/dsl/config'
 
 class ConfigParserTest < MiniTest::Unit::TestCase
   def test_full_config_parses_correctly

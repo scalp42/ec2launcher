@@ -71,12 +71,15 @@ module EC2Launcher
     #
     def delete_record_by_name(hostname, record_type = "A", log_errors = true)
       # Search for the record
+      delete_result = true
       record = find_record(hostname, record_type)
       if record
         delete_record(record.name, record.type, record.ttl, record.value, log_errors)
       else
+        delete_result = false
         @log.warn "Route53 '#{record_type}' record for '#{hostname}' not found!" if log_errors
       end
+      delete_result
     end
 
     # Deletes a DNS record from Route53.
@@ -88,6 +91,7 @@ module EC2Launcher
     # @param [Boolean] log_errors Log errors or not. False quietly ignores errors.
     #
     def delete_record(name, type, ttl, value, log_errors = true)
+      delete_result = true
       begin
         @route53.client.change_resource_record_sets({
           :hosted_zone_id => @hosted_zone_id, 
@@ -107,7 +111,9 @@ module EC2Launcher
         })
       rescue StandardError => bang
         @log.error "Error deleting A record from Route53: #{bang}" if log_errors
+        delete_result = false
       end
+      delete_result
     end
 
     # Searches for a record with the specified name and type.

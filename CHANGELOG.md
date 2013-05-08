@@ -1,3 +1,8 @@
+## 1.7.1
+
+* Added support to specify version numbers when preinstalling gems.
+* Force setup script to install the same version of ec2launcher that was used to generate the launch configuration.
+
 ## 1.7.0
 
 * New optional "dynamic" naming convention that leverages the instance id instead of a sequential number. Useful for ASGs.

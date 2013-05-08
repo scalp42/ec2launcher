@@ -293,7 +293,7 @@ module EC2Launcher
       gems = []
       gems += @environment.gems unless @environment.gems.nil?
       gems += @application.gems unless @application.gems.nil?
-      gems << "ec2launcher"
+      gems << {"name" => "ec2launcher", "version" => VERSION}
 
       ##############################
       # Packages - preinstall
@@ -336,7 +336,24 @@ module EC2Launcher
       @log.info "Chef PEM            : #{chef_validation_pem_url}"
       @log.info "AWS key file        : #{aws_keyfile}"
       @log.info "Roles               : #{roles.join(', ')}"
-      @log.info "Gems                : #{gems.join(', ')}"
+      
+      gem_list = []
+      gems.each do |gem_info|
+        if gem_info.kind_of? Hash
+          gem_name = gem_info[:name]
+          gem_version = gem_info[:version]
+          next unless gem_name
+
+          gem_details = gem_name
+          gem_details += " (#{gem_version})" if gem_version
+
+          gem_list << gem_details
+        else
+          gem_list << gem_info
+        end
+      end
+      @log.info "Gems                : #{gem_list.join(', ')}"
+      
       @log.info "Packages            : #{packages.join(', ')}"
       if subnet
         cidr_block = @ec2.subnets[subnet].cidr_block

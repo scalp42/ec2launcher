@@ -108,7 +108,24 @@ ruby_path = instance_data["ruby_path"]
 # Pre-install gems
 unless instance_data["gems"].nil?
   puts "Preinstalling gems..."
-	instance_data["gems"].each {|gem_name| puts `#{gem_path} install --no-rdoc --no-ri #{gem_name}` }
+	instance_data["gems"].each do |gem_info| 
+    if gem_info.kind_of? Hash
+      gem_name = gem_info["name"]
+      gem_version = gem_info["version"]
+
+      if gem_name
+        command = "#{gem_path} install --no-rdoc --no-ri #{gem_name}"
+        command += " -v #{gem_version}" if gem_version
+        puts "Installing #{gem_name} #{gem_version}..."
+        puts `#{command}`
+      else
+        puts "Unable to parse gem name for preinstallation from: '#{gem_info.to_s}'"
+      end
+    else
+      puts "Installing latest version of #{gem_info}..."
+      puts `#{gem_path} install --no-rdoc --no-ri #{gem_info}`
+    end
+  end
 end
 
 # Pre-install packages

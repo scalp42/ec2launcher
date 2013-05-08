@@ -9,6 +9,8 @@ require 'json'
 
 require 'ec2launcher'
 
+require 'aws-sdk'
+
 SETUP_SCRIPT = "setup_instance.rb"
 
 class InitOptions
@@ -78,7 +80,23 @@ end
 option_parser = InitOptions.new
 options = option_parser.parse(ARGV)
 
+if ARGV.length < 1
+  option_parser.help
+  abort
+end
+
 setup_json_filename = ARGV[0]
+
+begin
+  logger = Log4r::Logger['ec2launcher']
+  unless logger
+    logger = Log4r::Logger.new 'ec2launcher'
+    log_output = Log4r::Outputter.stdout
+    log_output.formatter = PatternFormatter.new :pattern => "%m"
+    logger.outputters = log_output
+  end
+rescue
+end
 
 # Read the setup JSON file
 instance_data = JSON.parse(File.read(setup_json_filename))
@@ -86,15 +104,16 @@ instance_data = JSON.parse(File.read(setup_json_filename))
 # Path to executables
 gem_path = instance_data["gem_path"]
 ruby_path = instance_data["ruby_path"]
-chef_path = instance_data["chef_path"]
 
 # Pre-install gems
 unless instance_data["gems"].nil?
+  puts "Preinstalling gems..."
 	instance_data["gems"].each {|gem_name| puts `#{gem_path} install --no-rdoc --no-ri #{gem_name}` }
 end
 
 # Pre-install packages
 unless instance_data["packages"].nil?
+  puts "Preinstalling packages..."
   puts `yum install #{instance_data["packages"].join(" ")} -y`
 end
 
@@ -138,29 +157,11 @@ end
 puts "Retrieving Chef validation.pem ..."
 puts `s3curl.pl --id startup #{instance_data['chef_validation_pem_url']} > /etc/chef/validation.pem`
 
-# Setting hostname
-hostname = options.hostname
-if instance_data["dynamic_name"]
-  hostname_generator = EC2Launcher::DynamicHostnameGenerator.new(instance_data["dynamic_name_prefix"], instance_data["dynamic_name_suffix"])
-  short_hostname = hostname_generator.generate_dynamic_hostname(@INSTANCE_ID)
-  hostname = hostname_generator.generate_fqdn(short_hostname, instance_data["domain_name"])
-end
-
-puts "Setting hostname ... #{hostname}"
-`hostname #{hostname}`
-`sed -i 's/^HOSTNAME=.*$/HOSTNAME=#{hostname}/' /etc/sysconfig/network`
-
-# Set Chef node name
-File.open("/etc/chef/client.rb", 'a') { |f| f.write("node_name \"#{hostname}\"") }
-
-# Setup Chef client
-puts "Connecting to Chef ..."
-`rm -f /etc/chef/client.pem`
-puts `#{chef_path}`
-
 # Retrieve secondary setup script and run it
 puts "Launching role setup script ..."
-command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} -h #{hostname} #{setup_json_filename}"
+command = "#{ruby_path} /tmp/#{SETUP_SCRIPT} -a #{options.application} -e #{options.environ} "
+command += " -h #{options.hostname} " if options.hostname
+command += "#{setup_json_filename}"
 command += " -c #{options.clone_host}" unless options.clone_host.nil?
 command += " 2>&1 > /var/log/cloud-init.log"
 run_command(command)

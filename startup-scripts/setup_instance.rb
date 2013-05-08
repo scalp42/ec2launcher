@@ -11,6 +11,7 @@ require 'json'
 require 'aws-sdk'
 
 require 'ec2launcher'
+require 'ec2launcher/dynamic_hostname_generator'
 
 AWS_KEYS = "/etc/aws/startup_runner_keys"
 
@@ -77,6 +78,17 @@ class InstanceSetup
     option_parser = InitOptions.new
     @options = option_parser.parse(args)
 
+    begin
+      @logger = Log4r::Logger['ec2launcher']
+      unless @logger
+        @logger = Log4r::Logger.new 'ec2launcher'
+        log_output = Log4r::Outputter.stdout
+        log_output.formatter = PatternFormatter.new :pattern => "%m"
+        @logger.outputters = log_output
+      end
+    rescue
+    end
+
     @setup_json_filename = args[0]
   
     # Load the AWS access keys
@@ -112,13 +124,53 @@ class InstanceSetup
     instance_data = parser.parse()
 
     ##############################
+    # EXECUTABLES
+    ##############################
+    chef_path = instance_data["chef_path"]
+
+    ##############################
     # HOST NAME
     ##############################
+    @hostname = @options.hostname
     if instance_data["dynamic_name"]
+      puts "Calculating dynamic host name..."
       hostname_generator = EC2Launcher::DynamicHostnameGenerator.new(instance_data["dynamic_name_prefix"], instance_data["dynamic_name_suffix"])
-      instance_data["short_hostname"] = hostname_generator.generate_dynamic_hostname(@INSTANCE_ID)
-      instance_data["hostname"] = hostname_generator.generate_fqdn(@hostname, instance_data["domain_name"])
+      short_hostname = hostname_generator.generate_dynamic_hostname(@INSTANCE_ID)
+      @hostname = hostname_generator.generate_fqdn(short_hostname, instance_data["domain_name"])
+
+      instance_data["short_hostname"] = short_hostname
+      instance_data["hostname"] = @hostname
+
+      # Route53
+      if instance_data["route53_zone_id"]
+        puts "Adding host to Route53..."
+
+        # Find the local ip address
+        local_mac_address = `curl http://169.254.169.254/latest/meta-data/mac`.strip
+        local_ip_addresses = `curl http://169.254.169.254/latest/meta-data/network/interfaces/macs/#{local_mac_address}/local-ipv4s`.strip
+        local_ip_address = local_ip_addresses.split[0]
+
+        # Add record to Route53. 
+        # Note that we use the FQDN because that is what the AWS SDK requires, even though the Web Console only
+        # uses the short name.
+        aws_route53 = AWS::Route53.new 
+        route53 = EC2Launcher::Route53.new(aws_route53, instance_data["route53_zone_id"], @logger)
+        route53_zone = aws_route53.client.get_hosted_zone({:id => instance_data["route53_zone_id"]})
+        route53.create_record(@hostname, local_ip_address)
+      end
     end
+
+    puts "Setting hostname ... #{@hostname}"
+    `hostname #{@hostname}`
+    `sed -i 's/^HOSTNAME=.*$/HOSTNAME=#{@hostname}/' /etc/sysconfig/network`
+
+    # Set Chef node name
+    File.open("/etc/chef/client.rb", 'a') { |f| f.write("node_name \"#{@hostname}\"") }
+
+    # Setup Chef client
+    puts "Connecting to Chef ..."
+    `rm -f /etc/chef/client.pem`
+    puts `#{chef_path}`
 
     ##############################
     # EBS VOLUMES
@@ -181,7 +233,7 @@ class InstanceSetup
     knife_config = <<EOF
 log_level                :info
 log_location             STDOUT
-node_name                '#{@options.hostname}'
+node_name                '#{@hostname}'
 client_key               '/etc/chef/client.pem'
 validation_client_name   'chef-validator'
 validation_key           '/etc/chef/validation.pem'
@@ -197,7 +249,7 @@ EOF
     ##############################
     # Add roles
     instance_data["roles"].each do |role|
-      cmd = "#{knife_path} node run_list add #{@options.hostname} \"role[#{role}]\""
+      cmd = "#{knife_path} node run_list add #{@hostname} \"role[#{role}]\""
       puts cmd
       puts `#{cmd}`
     end
@@ -228,9 +280,9 @@ EOF
       ses.send_email(
         :from => instance_data["email_notifications"]["from"],
         :to => instance_data["email_notifications"]["to"],
-        :subject => "Server setup complete: #{@options.hostname}",
-        :body_text => "Server setup is complete for Host: #{@options.hostname}, Environment: #{@options.environ}, Application: #{@options.application}",
-        :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{@options.hostname}</div><div><strong>Environment:</strong> #{@options.environ}</div><div><strong>Application:</strong> #{@options.application}</div>"
+        :subject => "Server setup complete: #{@hostname}",
+        :body_text => "Server setup is complete for Host: #{@hostname}, Environment: #{@options.environ}, Application: #{@options.application}",
+        :body_html => "<div>Server setup is complete for:</div><div><strong>Host:</strong> #{@hostname}</div><div><strong>Environment:</strong> #{@options.environ}</div><div><strong>Application:</strong> #{@options.application}</div>"
       )
     else
       puts "Skipping email notification."

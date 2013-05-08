@@ -783,6 +783,7 @@ module EC2Launcher
       if @options.dynamic_name
         # setup_json['dynamic_name_prefix'] = @hostname_generator.prefix
         setup_json['dynamic_name_suffix'] = "#{@hostname_generator.prefix}.#{@hostname_generator.suffix}"
+        setup_json['route53_zone_id'] = @route53_zone_id
       end
 
       setup_json["gem_path"] = @instance_paths.gem_path
@@ -871,7 +872,7 @@ EOF
         user_data += " -h #{launch_options[:fqdn]}" if launch_options[:fqdn]
         user_data += " /tmp/setup.json"
         user_data += " -c #{@options.clone_host}" unless @options.clone_host.nil?
-        user_data += " 2>&1 > /var/log/cloud-startup.log"
+        user_data += " &> /var/log/cloud-startup.log"
       end
 
       # Add extra requested commands to the launch sequence

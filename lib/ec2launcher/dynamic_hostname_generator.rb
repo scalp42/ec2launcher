@@ -18,9 +18,18 @@ module EC2Launcher
     def initialize(prefix = nil, suffix = nil)
       @prefix = prefix
       @suffix = suffix
-      if suffix && suffix =~ /^[.]/
-        @suffix = suffix.slice(1, suffix.length)
+      
+      if prefix
+        @prefix = prefix.slice(0, prefix.length - 1) if prefix =~ /[.]$/
       end
+
+      if suffix
+        @suffix = suffix.slice(1, suffix.length) if suffix =~ /^[.]/
+        @suffix = @suffix.slice(0, @suffix.length - 1) if @suffix =~ /[.]$/
+      end
+
+      @prefix = nil if @prefix && @prefix.size < 1
+      @suffix = nil if @suffix && @suffix.size < 1
     end
 
     # Given an instance id, generates a dynamic short hostname typically in the form:
@@ -36,8 +45,8 @@ module EC2Launcher
     def generate_dynamic_hostname(instance_id)
       instance_id_name = (instance_id =~ /^i-/ ? instance_id.gsub(/^i-/, '') : instance_id)
 
-      short_name = ""
-      short_name = @prefix if @prefix
+      short_name = @prefix
+      short_name ||= ""
       short_name += instance_id_name
       short_name += ".#{@suffix}" if @suffix
 

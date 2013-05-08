@@ -1,11 +1,11 @@
 ## 1.7.0
 
-* New optional naming convention that leverages the instance id instead of a sequential number.
+* New optional "dynamic" naming convention that leverages the instance id instead of a sequential number. Useful for ASGs.
+* New command line option "--dynamic-name" that forces use of new naming convention.
 
 ## 1.6.15
 
 * Fixed a problem parsing the setup JSON on MRI rubies later than 1.9.3-p194, which was the root cause of the block device handling issues.
->>>>>>> master
 
 ## 1.6.14
 

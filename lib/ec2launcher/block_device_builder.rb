@@ -14,10 +14,11 @@ module EC2Launcher
     attr_reader :block_device_mappings
     attr_reader :block_device_tags
 
-    # @param [AWS::EC2] ec2 interface to ec2
-    # @param [Integer, nil] volume_size size of new EBS volumes. If set to nil, uses EC2Launcher::Defaults::DEFAULT_VOLUME_SIZE.
+    # @param [AWS::EC2] ec2               Interface to ec2
+    # @param [Integer, nil] volume_size   Size of new EBS volumes. If set to nil, uses EC2Launcher::Defaults::DEFAULT_VOLUME_SIZE.
+    # @param [Log4r, nil] logger          Optional logger.
     #
-    def initialize(ec2, volume_size = nil)
+    def initialize(ec2, volume_size = nil, logger = nil)
       @ec2 = ec2
       @block_size = volume_size
       @volume_size ||= EC2Launcher::DEFAULT_VOLUME_SIZE
@@ -26,7 +27,8 @@ module EC2Launcher
       @block_device_tags = {}
 
       begin
-        @log = Log4r::Logger['ec2launcher']
+        @log = logger
+        @log ||= Log4r::Logger['ec2launcher']
       rescue
       end
 

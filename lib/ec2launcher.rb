@@ -748,7 +748,7 @@ module EC2Launcher
     end
 
     def load_and_encode_file(pathname)
-      `cat #{pathname} |gzip -f |base64`
+      `cat #{pathname} |sed '/^[ \t]*$/d'|sed '/^[ \t]*#/d'|gzip -f |base64`
     end
 
     def load_and_encode_file_with_path(base_path, filename)

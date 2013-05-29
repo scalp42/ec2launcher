@@ -1,3 +1,7 @@
+## 1.7.2
+
+* Strip blank lines and comments from setup files that are included in the user-data to reduce payload size.
+
 ## 1.7.1
 
 * Added support to specify version numbers when preinstalling gems.

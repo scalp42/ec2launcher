@@ -79,13 +79,10 @@ class InstanceSetup
     @options = option_parser.parse(args)
 
     begin
-      @logger = Log4r::Logger['ec2launcher']
-      unless @logger
-        @logger = Log4r::Logger.new 'ec2launcher'
-        log_output = Log4r::Outputter.stdout
-        log_output.formatter = PatternFormatter.new :pattern => "%m"
-        @logger.outputters = log_output
-      end
+      @logger = Log4r::Logger.new 'ec2launcher'
+      log_output = Log4r::Outputter.stdout
+      log_output.formatter = PatternFormatter.new :pattern => "%m"
+      @logger.outputters = log_output
     rescue
     end
 
@@ -187,11 +184,8 @@ class InstanceSetup
 
     #  Process ephemeral devices first
     ephemeral_drive_count = case @EC2_INSTANCE_TYPE
-      when "m1.small" then 1
-      when "m1.medium" then 1
-      when "m2.xlarge" then 1
-      when "m2.2xlarge" then 1
-      when "c1.medium" then 1
+      when "t1.micro" then 0
+      when "m3.2xlarge" then 0
       when "m1.large" then 2
       when "m2.4xlarge" then 2
       when "cc1.4xlarge" then 2
@@ -199,7 +193,7 @@ class InstanceSetup
       when "m1.xlarge" then 4
       when "c1.xlarge" then 4
       when "cc2.8xlarge" then 4
-      else 0
+      else 1
     end
 
     # Partition the ephemeral drives

@@ -8,8 +8,6 @@ require 'ec2launcher/directory_processing'
 require 'ec2launcher/dsl/application'
 require 'ec2launcher/dsl/environment'
 
-include Log4r
-
 module EC2Launcher
   class ApplicationProcessor
     attr_accessor :applications

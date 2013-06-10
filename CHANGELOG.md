@@ -1,3 +1,7 @@
+## 1.7.4
+
+* Clean up bad references to Log4r.
+
 ## 1.7.3
 
 * Fixed issue with Gemspec not installing executables correctly.

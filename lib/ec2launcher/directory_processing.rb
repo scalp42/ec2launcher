@@ -4,8 +4,6 @@
 require 'rubygems'
 require 'log4r'
 
-include Log4r
-
 module EC2Launcher
 	module DirectoryProcessing
 		# Attempts to build a list of valid directories.
@@ -18,7 +16,7 @@ module EC2Launcher
 		# @return [Array<String] list of directories that exist
 		#
 		def process_directory_list(base_directory, target_directories, default_directory, name, fail_on_error = false)
-			log = Logger['ec2launcher']
+			log = Log4r::Logger['ec2launcher']
 			dirs = []
 			if target_directories.nil?
 			  dirs << File.join(base_directory, default_directory)

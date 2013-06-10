@@ -6,8 +6,6 @@ require 'log4r'
 
 require 'ec2launcher/directory_processing'
 
-include Log4r
-
 module EC2Launcher
   class EnvironmentProcessor
     attr_accessor :environments

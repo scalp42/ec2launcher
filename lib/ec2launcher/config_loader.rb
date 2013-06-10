@@ -6,8 +6,6 @@ require 'log4r'
 
 require 'ec2launcher/dsl/config'
 
-include Log4r
-
 module EC2Launcher
   class ConfigLoader
     attr_accessor :config

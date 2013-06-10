@@ -1,3 +1,7 @@
+## 1.7.5
+
+* Fixed stray reference to Log4r.
+
 ## 1.7.4
 
 * Clean up bad references to Log4r.

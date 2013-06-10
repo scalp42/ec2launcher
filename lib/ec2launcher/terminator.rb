@@ -15,10 +15,16 @@ module EC2Launcher
     include BackoffRunner
 
     def initialize(config_directory)
-      @log = Logger.new 'ec2launcher'
-      log_output = Outputter.stdout
-      log_output.formatter = PatternFormatter.new :pattern => "%m"
-      @log.outputters = log_output
+      begin
+        @log = Log4r::Logger['ec2launcher']
+        unless @log
+          @log = Log4r::Logger.new 'ec2launcher'
+          log_output = Log4r::Outputter.stdout
+          log_output.formatter = PatternFormatter.new :pattern => "%m"
+          @log.outputters = log_output
+        end
+      rescue
+      end
 
       ##############################
       # Load configuration data
